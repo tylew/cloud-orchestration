@@ -1,0 +1,13 @@
+services:
+  app:
+    build: .
+    env_file: .env.local
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./packages:/app/packages
+      - ${HOME}/.config/gcloud:/root/.config/gcloud
+    command: uvicorn packages.api.main:app --host 0.0.0.0 --port 8080 --reload
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      - GOOGLE_CLOUD_PROJECT=${GCP_PROJECT_ID:-pl4m-host-dev}
