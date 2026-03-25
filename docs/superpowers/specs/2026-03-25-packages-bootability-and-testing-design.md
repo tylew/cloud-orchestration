@@ -12,13 +12,15 @@
 ### Dockerfile (repo root)
 
 - **Base:** `python:3.12-slim`
-- **Install:** `pip install .` from `packages/pyproject.toml` (installs `core`, `api`, `platform` as one package)
-- **Entrypoint:** `uvicorn api.main:app --host 0.0.0.0 --port 8080`
+- **Copy:** Entire repo into container (code imports use `packages.api`, `packages.core`, `packages.platform` paths)
+- **Install:** `pip install ./packages` to install dependencies from `packages/pyproject.toml`
+- **Workdir:** Repo root (so `packages.*` imports resolve)
+- **Entrypoint:** `uvicorn packages.api.main:app --host 0.0.0.0 --port 8080`
 - No `gcloud`/`terraform` in the dev image — those are only needed in the Cloud Build builder image for tenant deploys
 
 ### docker-compose.yml Fixes
 
-- Fix build context and module path (`api.main:app`, not `backend.main:app`)
+- Fix build context and module path (`packages.api.main:app`, not `backend.main:app`)
 - Mount `packages/` for hot reload during development
 - Load `.env` file with defaults for: `GCP_PROJECT_ID`, `FIRESTORE_DATABASE`, `AUTH_DISABLED=true`, `DEV_USER_*` vars
 - Drop the `frontend` service (not relevant yet — `test-frontend/` is empty, `product-sales-site` is a separate Next.js app)
@@ -30,7 +32,7 @@
 
 ### Verification
 
-`docker compose up` then `GET http://localhost:8080/health` returns 200.
+`docker compose up` then `GET http://localhost:8080/api/health` returns 200 (all routes are mounted under `/api` prefix).
 
 ---
 
@@ -41,19 +43,24 @@
 `platform/auth/firebase.py` has a hardcoded `_DEV_USER`:
 
 ```python
-_DEV_USER = AuthUser(uid="dev-user", email="dev@localhost", ...)
+_DEV_USER = CurrentUser(
+    tenant_id="dev-local",
+    email="dev@localhost",
+    display_name="Local Developer",
+    is_admin=True,
+)
 ```
 
 ### Change
 
-Read from environment variables with fallbacks to current defaults:
+Read from environment variables with fallbacks to current defaults. `CurrentUser` has four fields: `tenant_id`, `email`, `display_name`, `is_admin`.
 
-| Env Var | Fallback | Purpose |
+| Env Var | Fallback | Maps To |
 |---------|----------|---------|
-| `DEV_USER_UID` | `"dev-user"` | Firebase UID |
-| `DEV_USER_EMAIL` | `"dev@localhost"` | User email |
-| `DEV_USER_DISPLAY_NAME` | `"Dev User"` | Display name |
-| `DEV_TENANT_ID` | Value of `DEV_USER_UID` | Tenant ID (= owner UID in this system) |
+| `DEV_TENANT_ID` | `"dev-local"` | `tenant_id` (= Firebase UID of the tenant owner) |
+| `DEV_USER_EMAIL` | `"dev@localhost"` | `email` |
+| `DEV_USER_DISPLAY_NAME` | `"Local Developer"` | `display_name` |
+| `DEV_USER_IS_ADMIN` | `"true"` | `is_admin` |
 
 Modify the existing `_DEV_USER` construction in `firebase.py` to use `os.environ.get()`. No new files.
 
@@ -187,9 +194,11 @@ Boot FastAPI with `TestClient`, wired to real GCP through the platform layer. Pr
 ### Flows to Test
 
 **Health & Config (`test_api_health.py`):**
-- `GET /health` returns 200
+- `GET /api/health` returns 200
 - `GET /api/me` returns the configured dev user
 - `GET /api/schema/types` returns all 23 node types from registry
+
+Note: All routes are mounted under the `/api` prefix in `main.py`.
 
 **Blueprint Lifecycle (`test_api_blueprints.py`):**
 - `POST /api/blueprints/validate` with valid envelope returns `valid: true`
@@ -246,10 +255,10 @@ asyncio_mode = "auto"
 ```env
 GCP_PROJECT_ID=my-super-cool-app-dev-3f74d0
 AUTH_DISABLED=true
-DEV_USER_UID=<tyler-uid>
+DEV_TENANT_ID=<tyler-firebase-uid>       # Get from Firebase Console → Authentication → Users
 DEV_USER_EMAIL=tyler@pl4m.com
 DEV_USER_DISPLAY_NAME=Tyler
-DEV_TENANT_ID=<tyler-uid>
+DEV_USER_IS_ADMIN=true
 FIRESTORE_DATABASE=(default)
 ```
 
@@ -290,7 +299,7 @@ Steps 1-3 are independent and can be done in parallel. Steps 5-7 can proceed in 
 
 ## Success Criteria
 
-- `docker compose up` boots the FastAPI server, `GET /health` returns 200
+- `docker compose up` boots the FastAPI server, `GET /api/health` returns 200
 - `pytest` (core only) passes with zero GCP dependencies
 - `pytest -m integration` passes against `my-super-cool-app-dev-3f74d0`
 - API tests prove: blueprint validation, Terraform generation, project CRUD, and deploy flow all work end-to-end
