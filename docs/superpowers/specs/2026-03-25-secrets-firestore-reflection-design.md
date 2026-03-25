@@ -35,7 +35,7 @@
 | `created_by` | string | Email of creator |
 | `latest_version` | string | Latest version number (any status) |
 | `active_version_count` | int | Count of non-destroyed versions |
-| `status` | string | `"active"`, `"destroyed"` (all versions destroyed / secret deleted), or `"failed"` (GCP SM write failed during create) |
+| `status` | string | `"active"`, `"empty"` (all versions destroyed but secret still exists — can add new versions), `"destroyed"` (secret deleted from GCP SM), or `"failed"` (GCP SM write failed during create) |
 | `masked_value` | string or null | Masked preview of latest active version. `null` if value is under 6 chars or no active versions remain |
 | `gcp_secret_name` | string | Full GCP resource name for reference |
 
@@ -119,7 +119,7 @@ All routes use `require_project_access()` for authorization, consistent with exi
 
 1. Handler calls `store.secrets.add_version()`
 2. Store calls `gcp.secret_manager.add_secret_version()` → GCP SM
-3. On success: store writes new version subdoc, updates parent doc `latest_version`, increments `active_version_count`, updates `masked_value`
+3. On success: store writes new version subdoc, updates parent doc `latest_version`, increments `active_version_count`, updates `masked_value`. If secret was `"empty"`, sets `status: "active"`
 4. On GCP failure: no Firestore changes (version subdoc not written), error returned to caller
 
 ### Destroy Version
@@ -127,7 +127,7 @@ All routes use `require_project_access()` for authorization, consistent with exi
 1. Handler calls `store.secrets.destroy_version()`
 2. Store calls `gcp.secret_manager.destroy_secret_version()` → GCP SM
 3. On success: store updates version subdoc: `status: "destroyed"`, `destroyed_at`, `destroyed_by`
-4. Store recalculates parent doc: decrements `active_version_count`, rolls back `masked_value` to previous active version (or `null` if none remain)
+4. Store recalculates parent doc: decrements `active_version_count`, rolls back `masked_value` to previous active version (or `null` if none remain). If `active_version_count` reaches 0, sets `status: "empty"`
 5. On GCP failure: no Firestore changes, error returned to caller
 
 ### Delete Secret
