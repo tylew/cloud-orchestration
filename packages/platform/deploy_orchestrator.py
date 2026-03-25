@@ -88,6 +88,14 @@ def _run_deploy(tenant_id: str, deploy_id: str, project_ref_id: str,
 
         if status["status"] == "SUCCESS":
             mark_env_deployed(tenant_id, project_ref_id, env_name)
+
+            # Create deploy snapshots for each node (per D-11/D-12)
+            from packages.platform.deploy_service import create_deploy_snapshots
+            try:
+                create_deploy_snapshots(tenant_id, deploy_id, project_ref_id, env_name, envelope)
+            except Exception as snap_err:
+                log.warning("Failed to create deploy snapshots: %s", snap_err)
+
             update_deploy_status(
                 tenant_id, deploy_id, "ready",
                 step_result={"step": "cloud_build", "success": True, "build_status": status["status"]},
