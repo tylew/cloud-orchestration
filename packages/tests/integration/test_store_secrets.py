@@ -5,7 +5,7 @@ from packages.platform.store import secrets as secret_store
 
 pytestmark = pytest.mark.integration
 
-GCP_PROJECT = "pl4m-host-dev"
+GCP_PROJECT = "my-super-cool-app-dev-3f74d0"
 
 
 class TestSecretLifecycle:

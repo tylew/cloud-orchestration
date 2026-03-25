@@ -5,12 +5,27 @@ import pytest
 pytestmark = pytest.mark.integration
 
 
+@pytest.fixture
+def test_project(api_client, test_prefix):
+    """Create a real project and return its ref_id. Cleanup after."""
+    project_data = {
+        "project_id": "my-super-cool-app-dev-3f74d0",
+        "display_name": f"Secrets Test {test_prefix}",
+        "region": "us-central1",
+    }
+    resp = api_client.post("/api/projects", json=project_data)
+    assert resp.status_code == 200
+    created = resp.json()
+    ref_id = created.get("id")
+    yield ref_id
+    api_client.delete(f"/api/projects/{ref_id}")
+
+
 class TestSecretAPI:
-    def test_create_list_get_version_destroy_delete(self, api_client, test_prefix):
+    def test_create_list_get_version_destroy_delete(self, api_client, test_prefix, test_project):
         env = "dev"
         secret_id = f"{test_prefix}-api-sec"
-        # Use a dummy project_ref_id — authz will resolve via dev user
-        prefix = f"/api/projects/test-proj/envs/{env}/secrets"
+        prefix = f"/api/projects/{test_project}/envs/{env}/secrets"
 
         # Create
         resp = api_client.post(prefix, json={
@@ -18,9 +33,6 @@ class TestSecretAPI:
             "value": "api-test-value-123456",
             "description": "API test secret",
         })
-        if resp.status_code == 404:
-            pytest.skip("Test project not found — need project setup for API tests")
-
         assert resp.status_code == 200
         data = resp.json()
         assert data["secret_id"] == secret_id
@@ -63,14 +75,12 @@ class TestSecretAPI:
             api_client.delete(f"{prefix}/{secret_id}")
             raise
 
-    def test_create_missing_secret_id(self, api_client):
-        resp = api_client.post("/api/projects/test-proj/envs/dev/secrets", json={"value": "something"})
-        if resp.status_code == 404:
-            pytest.skip("Test project not found")
+    def test_create_missing_secret_id(self, api_client, test_project):
+        prefix = f"/api/projects/{test_project}/envs/dev/secrets"
+        resp = api_client.post(prefix, json={"value": "something"})
         assert resp.status_code == 422
 
-    def test_add_version_missing_value(self, api_client):
-        resp = api_client.put("/api/projects/test-proj/envs/dev/secrets/nonexistent", json={})
-        if resp.status_code == 404:
-            pytest.skip("Test project not found")
+    def test_add_version_missing_value(self, api_client, test_project):
+        prefix = f"/api/projects/{test_project}/envs/dev/secrets/nonexistent"
+        resp = api_client.put(prefix, json={})
         assert resp.status_code == 422
