@@ -35,7 +35,7 @@
 | `created_by` | string | Email of creator |
 | `latest_version` | string | Latest version number (any status) |
 | `active_version_count` | int | Count of non-destroyed versions |
-| `status` | string | `"active"` or `"destroyed"` (all versions destroyed / secret deleted) |
+| `status` | string | `"active"`, `"destroyed"` (all versions destroyed / secret deleted), or `"failed"` (GCP SM write failed during create) |
 | `masked_value` | string or null | Masked preview of latest active version. `null` if value is under 6 chars or no active versions remain |
 | `gcp_secret_name` | string | Full GCP resource name for reference |
 
@@ -120,6 +120,7 @@ All routes use `require_project_access()` for authorization, consistent with exi
 1. Handler calls `store.secrets.add_version()`
 2. Store calls `gcp.secret_manager.add_secret_version()` → GCP SM
 3. On success: store writes new version subdoc, updates parent doc `latest_version`, increments `active_version_count`, updates `masked_value`
+4. On GCP failure: no Firestore changes (version subdoc not written), error returned to caller
 
 ### Destroy Version
 
@@ -127,6 +128,7 @@ All routes use `require_project_access()` for authorization, consistent with exi
 2. Store calls `gcp.secret_manager.destroy_secret_version()` → GCP SM
 3. On success: store updates version subdoc: `status: "destroyed"`, `destroyed_at`, `destroyed_by`
 4. Store recalculates parent doc: decrements `active_version_count`, rolls back `masked_value` to previous active version (or `null` if none remain)
+5. On GCP failure: no Firestore changes, error returned to caller
 
 ### Delete Secret
 
@@ -162,9 +164,9 @@ All routes use `require_project_access()` for authorization, consistent with exi
 
 | File | Reason |
 |------|--------|
-| `core/schemas/configs/secret_manager.py` | Blueprint node config unchanged |
-| `core/terraform/templates/secret_manager.tf.j2` | TF generation unchanged |
-| `core/validation.py` | Secret validation rules unchanged |
+| `packages/core/schemas/configs/secret_manager.py` | Blueprint node config unchanged |
+| `packages/core/terraform/templates/secret_manager.tf.j2` | TF generation unchanged |
+| `packages/core/validation.py` | Secret validation rules unchanged |
 
 ### Tests
 
@@ -208,5 +210,5 @@ def safe_mask(value: str) -> str | None:
 - Secret values never appear in Firestore (only masked previews)
 - Secrets under 6 characters show no preview at all
 - Version history preserved with soft deletes for destroyed versions
-- All operations write to both Firestore and GCP SM atomically
+- All operations write to both Firestore and GCP SM in sequence with failure handling
 - Existing blueprint node config (`SecretManagerConfig`) and Terraform generation unchanged
