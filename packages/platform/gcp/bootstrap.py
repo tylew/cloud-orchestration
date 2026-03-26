@@ -13,6 +13,30 @@ import urllib.request
 import uuid
 from dataclasses import dataclass, field
 
+import google.auth
+import google.auth.transport.requests
+from google.api_core import exceptions as gcp_exceptions
+from google.cloud import storage
+from google.cloud.billing_v1 import CloudBillingClient
+from google.cloud.billing_v1.types import ProjectBillingInfo
+from google.cloud.resourcemanager_v3 import (
+    FoldersClient,
+    Project,
+    ProjectsClient,
+)
+from google.cloud.resourcemanager_v3.types import (
+    CreateFolderRequest,
+    CreateProjectRequest,
+    Folder,
+    GetProjectRequest,
+    ListFoldersRequest,
+)
+from google.cloud.service_usage_v1 import ServiceUsageClient
+from google.cloud.service_usage_v1.types import (
+    BatchEnableServicesRequest,
+    ListServicesRequest,
+)
+
 log = logging.getLogger(__name__)
 
 BOOTSTRAP_APIS = [
@@ -57,6 +81,7 @@ def generate_unique_project_id(display_name: str, max_retries: int = 5, environm
 
     Returns (project_id, bucket_name) tuple.
     """
+    storage_client = storage.Client()
     for _ in range(max_retries):
         candidate = generate_project_id(display_name, environment)
         bucket = f"{candidate}-tfstate"
@@ -66,96 +91,115 @@ def generate_unique_project_id(display_name: str, max_retries: int = 5, environm
             continue
         # Check if bucket exists
         try:
-            r = _run(["gcloud", "storage", "buckets", "describe", f"gs://{bucket}"], check=False)
-            if r.returncode == 0:
-                log.info("Bucket %s already exists, retrying", bucket)
-                continue
-        except FileNotFoundError:
-            pass  # gcloud not available, skip check
+            storage_client.get_bucket(bucket)
+            log.info("Bucket %s already exists, retrying", bucket)
+            continue
+        except gcp_exceptions.NotFound:
+            pass  # Bucket doesn't exist — good
+        except Exception:
+            pass  # Can't check — proceed anyway
         return (candidate, bucket)
     # Fallback: just return the last generated one
     candidate = generate_project_id(display_name, environment)
     return (candidate, f"{candidate}-tfstate")
 
 
-def _run(args: list[str], check: bool = True, cwd: str | None = None) -> subprocess.CompletedProcess:
-    log.info("Running: %s", " ".join(args))
-    return subprocess.run(args, capture_output=True, text=True, check=check, timeout=120, cwd=cwd)
-
-
 def validate_project_exists(project_id: str) -> bool:
     try:
-        r = _run(["gcloud", "projects", "describe", project_id, "--format=json"], check=False)
-        return r.returncode == 0
-    except FileNotFoundError:
-        log.warning("gcloud not found — skipping project existence check for %s", project_id)
+        client = ProjectsClient()
+        client.get_project(name=f"projects/{project_id}")
+        return True
+    except gcp_exceptions.NotFound:
+        return False
+    except Exception as e:
+        log.warning("Could not check project existence for %s: %s", project_id, e)
         return False
 
 
 def check_billing_enabled(project_id: str) -> bool:
-    r = _run(["gcloud", "billing", "projects", "describe", project_id, "--format=json"], check=False)
-    if r.returncode != 0:
-        return False
     try:
-        data = json.loads(r.stdout)
-        return data.get("billingEnabled", False)
-    except (json.JSONDecodeError, KeyError):
+        client = CloudBillingClient()
+        info = client.get_project_billing_info(name=f"projects/{project_id}")
+        return info.billing_enabled
+    except Exception as e:
+        log.warning("Could not check billing for %s: %s", project_id, e)
         return False
 
 
 def enable_apis(project_id: str, apis: list[str] | None = None) -> list[dict]:
-    """Enable GCP APIs -- batched into a single gcloud call (HARD-07)."""
+    """Enable GCP APIs -- batched into a single SDK call (HARD-07)."""
     apis = apis or BOOTSTRAP_APIS
-    # gcloud supports enabling multiple APIs in one call
-    r = _run(
-        ["gcloud", "services", "enable"] + list(apis) + ["--project", project_id, "--quiet"],
-        check=False,
-    )
-    if r.returncode == 0:
+    try:
+        client = ServiceUsageClient()
+        operation = client.batch_enable_services(
+            request=BatchEnableServicesRequest(
+                parent=f"projects/{project_id}",
+                service_ids=list(apis),
+            )
+        )
+        operation.result()  # Wait for completion
         return [{"api": api, "success": True, "error": None} for api in apis]
-    # If batch fails, fall back to individual calls to identify which failed
-    results = []
-    for api in apis:
-        r = _run(["gcloud", "services", "enable", api, "--project", project_id, "--quiet"], check=False)
-        results.append({"api": api, "success": r.returncode == 0, "error": r.stderr if r.returncode != 0 else None})
-    return results
+    except Exception as e:
+        log.warning("Batch enable failed for %s: %s — falling back to individual", project_id, e)
+        # Fall back to individual calls to identify which failed
+        results = []
+        client = ServiceUsageClient()
+        for api in apis:
+            try:
+                op = client.batch_enable_services(
+                    request=BatchEnableServicesRequest(
+                        parent=f"projects/{project_id}",
+                        service_ids=[api],
+                    )
+                )
+                op.result()
+                results.append({"api": api, "success": True, "error": None})
+            except Exception as ex:
+                results.append({"api": api, "success": False, "error": str(ex)})
+        return results
 
 
 def create_tf_state_bucket(project_id: str, region: str) -> dict:
-    bucket = f"gs://{project_id}-tfstate"
-    # Check if exists
-    r = _run(["gcloud", "storage", "buckets", "describe", bucket, "--project", project_id], check=False)
-    if r.returncode == 0:
+    bucket_name = f"{project_id}-tfstate"
+    client = storage.Client(project=project_id)
+    try:
+        bucket = client.get_bucket(bucket_name)
         # Bucket exists — ensure protections are in place
         _protect_tf_state_bucket(bucket)
-        return {"bucket": bucket, "created": False, "message": "Already exists"}
-    # Create
-    r = _run([
-        "gcloud", "storage", "buckets", "create", bucket,
-        "--project", project_id,
-        "--location", region,
-        "--uniform-bucket-level-access",
-        "--public-access-prevention",
-    ], check=False)
-    if r.returncode != 0:
-        return {"bucket": bucket, "created": False, "error": r.stderr}
-    _protect_tf_state_bucket(bucket)
-    return {"bucket": bucket, "created": True}
+        return {"bucket": f"gs://{bucket_name}", "created": False, "message": "Already exists"}
+    except gcp_exceptions.NotFound:
+        pass  # Need to create it
+    except Exception as e:
+        return {"bucket": f"gs://{bucket_name}", "created": False, "error": str(e)}
+
+    try:
+        bucket = client.bucket(bucket_name)
+        bucket.location = region
+        bucket.iam_configuration.uniform_bucket_level_access_enabled = True
+        bucket.iam_configuration.public_access_prevention = "enforced"
+        bucket = client.create_bucket(bucket, project=project_id)
+        _protect_tf_state_bucket(bucket)
+        return {"bucket": f"gs://{bucket_name}", "created": True}
+    except Exception as e:
+        return {"bucket": f"gs://{bucket_name}", "created": False, "error": str(e)}
 
 
-def _protect_tf_state_bucket(bucket: str):
+def _protect_tf_state_bucket(bucket):
     """Apply protections to a terraform state bucket: versioning + soft delete."""
-    # Versioning — allows state recovery
-    _run(["gcloud", "storage", "buckets", "update", bucket, "--versioning"], check=False)
-    # Soft delete — 7 day recovery window for deleted objects
-    _run(["gcloud", "storage", "buckets", "update", bucket,
-          "--soft-delete-duration=7d"], check=False)
-    log.info("Protections applied to %s (versioning + soft delete)", bucket)
+    try:
+        bucket.versioning_enabled = True
+        bucket.soft_delete_policy.retention_duration_seconds = 7 * 24 * 60 * 60  # 7 days
+        bucket.patch()
+        log.info("Protections applied to %s (versioning + soft delete)", bucket.name)
+    except Exception as e:
+        log.warning("Failed to apply protections to %s: %s", bucket.name, e)
 
 
 def _get_access_token() -> str:
-    r = _run(["gcloud", "auth", "print-access-token"])
-    return r.stdout.strip()
+    credentials, _ = google.auth.default()
+    request = google.auth.transport.requests.Request()
+    credentials.refresh(request)
+    return credentials.token
 
 
 def _firebase_api(method: str, url: str, token: str, body: dict | None = None) -> dict:
@@ -193,8 +237,14 @@ def init_identity_platform(project_id: str) -> dict:
 
 def _get_project_number(project_id: str) -> str | None:
     """Get the numeric project number from a project ID."""
-    r = _run(["gcloud", "projects", "describe", project_id, "--format=value(projectNumber)"], check=False)
-    return r.stdout.strip() if r.returncode == 0 else None
+    try:
+        client = ProjectsClient()
+        project = client.get_project(name=f"projects/{project_id}")
+        # project.name is "projects/<number>"
+        return project.name.split("/")[-1]
+    except Exception as e:
+        log.warning("Could not get project number for %s: %s", project_id, e)
+        return None
 
 
 def _create_oauth_client(project_id: str, token: str) -> dict | None:
@@ -336,26 +386,40 @@ def create_gcp_project(project_id: str, display_name: str,
                        billing_account: str | None = None,
                        folder_id: str | None = None) -> dict:
     """Create a GCP project, optionally inside a folder."""
-    cmd = ["gcloud", "projects", "create", project_id, f"--name={display_name}"]
-    if folder_id:
-        cmd.append(f"--folder={folder_id}")
+    try:
+        client = ProjectsClient()
+        project = Project(
+            project_id=project_id,
+            display_name=display_name,
+        )
+        if folder_id:
+            project.parent = f"folders/{folder_id}"
 
-    r = _run(cmd, check=False)
-    if r.returncode != 0:
-        stderr = r.stderr.lower()
-        if "already exists" in stderr:
+        operation = client.create_project(
+            request=CreateProjectRequest(project=project)
+        )
+        operation.result()  # Wait for completion
+
+        # Link billing if provided
+        if billing_account:
+            link_billing(project_id, billing_account)
+
+        return {"created": True}
+    except gcp_exceptions.AlreadyExists:
+        return {"created": False, "skipped": True, "reason": "already_exists", "exists": True}
+    except gcp_exceptions.PermissionDenied as e:
+        log.info("Skipping project creation (permission denied): %s", e)
+        exists = validate_project_exists(project_id)
+        return {"created": False, "skipped": True, "reason": "no_org", "exists": exists}
+    except Exception as e:
+        error_msg = str(e).lower()
+        if "already exists" in error_msg:
             return {"created": False, "skipped": True, "reason": "already_exists", "exists": True}
-        if "organization" in stderr or "parent" in stderr or "permission" in stderr:
-            log.info("Skipping project creation (no org): %s", r.stderr.strip())
+        if "organization" in error_msg or "parent" in error_msg or "permission" in error_msg:
+            log.info("Skipping project creation (no org): %s", e)
             exists = validate_project_exists(project_id)
             return {"created": False, "skipped": True, "reason": "no_org", "exists": exists}
-        return {"created": False, "skipped": False, "error": r.stderr.strip()}
-
-    # Link billing if provided
-    if billing_account:
-        link_billing(project_id, billing_account)
-
-    return {"created": True}
+        return {"created": False, "skipped": False, "error": str(e)}
 
 
 def ensure_tenant_folder(tenant_id: str, display_name: str, parent_folder_id: str) -> str:
@@ -363,41 +427,50 @@ def ensure_tenant_folder(tenant_id: str, display_name: str, parent_folder_id: st
 
     Returns the folder ID (numeric) of the tenant folder.
     """
+    client = FoldersClient()
+
     # Check if folder already exists
-    r = _run([
-        "gcloud", "resource-manager", "folders", "list",
-        f"--folder={parent_folder_id}",
-        f"--filter=displayName={display_name}",
-        "--format=value(name)",
-    ], check=False)
-    if r.returncode == 0 and r.stdout.strip():
-        folder_name = r.stdout.strip().split("\n")[0]
-        # folder_name is like "folders/123456" — extract the ID
-        folder_id = folder_name.split("/")[-1] if "/" in folder_name else folder_name
-        log.info("Tenant folder already exists: %s (ID: %s)", display_name, folder_id)
-        return folder_id
+    try:
+        request = ListFoldersRequest(parent=f"folders/{parent_folder_id}")
+        for folder in client.list_folders(request=request):
+            if folder.display_name == display_name:
+                folder_id = folder.name.split("/")[-1]
+                log.info("Tenant folder already exists: %s (ID: %s)", display_name, folder_id)
+                return folder_id
+    except Exception as e:
+        log.warning("Could not list folders under %s: %s", parent_folder_id, e)
 
     # Create folder
-    r = _run([
-        "gcloud", "resource-manager", "folders", "create",
-        f"--display-name={display_name}",
-        f"--folder={parent_folder_id}",
-        "--format=value(name)",
-    ], check=False)
-    if r.returncode != 0:
-        raise RuntimeError(f"Failed to create tenant folder: {r.stderr.strip()}")
-
-    folder_name = r.stdout.strip()
-    folder_id = folder_name.split("/")[-1] if "/" in folder_name else folder_name
-    log.info("Created tenant folder: %s (ID: %s)", display_name, folder_id)
-    return folder_id
+    try:
+        operation = client.create_folder(
+            request=CreateFolderRequest(
+                folder=Folder(
+                    parent=f"folders/{parent_folder_id}",
+                    display_name=display_name,
+                )
+            )
+        )
+        created_folder = operation.result()  # Wait for completion
+        folder_id = created_folder.name.split("/")[-1]
+        log.info("Created tenant folder: %s (ID: %s)", display_name, folder_id)
+        return folder_id
+    except Exception as e:
+        raise RuntimeError(f"Failed to create tenant folder: {e}")
 
 
 def link_billing(project_id: str, billing_account: str) -> dict:
     """Link a billing account to a project."""
-    r = _run(["gcloud", "billing", "projects", "link", project_id,
-              f"--billing-account={billing_account}"], check=False)
-    return {"success": r.returncode == 0, "error": r.stderr.strip() if r.returncode != 0 else None}
+    try:
+        client = CloudBillingClient()
+        client.update_project_billing_info(
+            name=f"projects/{project_id}",
+            project_billing_info=ProjectBillingInfo(
+                billing_account_name=f"billingAccounts/{billing_account}",
+            ),
+        )
+        return {"success": True, "error": None}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 
 def verify_project_health(project_id: str) -> dict:
@@ -405,16 +478,31 @@ def verify_project_health(project_id: str) -> dict:
     checks = []
 
     # Check each API
-    r = _run(["gcloud", "services", "list", "--enabled", "--project", project_id,
-              "--format=value(config.name)"], check=False)
-    enabled_apis = set(r.stdout.strip().split("\n")) if r.returncode == 0 else set()
+    try:
+        client = ServiceUsageClient()
+        request = ListServicesRequest(
+            parent=f"projects/{project_id}",
+            filter="state:ENABLED",
+        )
+        enabled_apis = set()
+        for service in client.list_services(request=request):
+            # service.config.name is like "storage.googleapis.com"
+            enabled_apis.add(service.config.name)
+    except Exception as e:
+        log.warning("Could not list services for %s: %s", project_id, e)
+        enabled_apis = set()
+
     for api in BOOTSTRAP_APIS:
         checks.append({"check": f"api:{api}", "ok": api in enabled_apis})
 
     # Check tfstate bucket
-    bucket = f"gs://{project_id}-tfstate"
-    r = _run(["gcloud", "storage", "buckets", "describe", bucket, "--project", project_id], check=False)
-    checks.append({"check": "tfstate_bucket", "ok": r.returncode == 0})
+    bucket_name = f"{project_id}-tfstate"
+    try:
+        storage_client = storage.Client(project=project_id)
+        storage_client.get_bucket(bucket_name)
+        checks.append({"check": "tfstate_bucket", "ok": True})
+    except Exception:
+        checks.append({"check": "tfstate_bucket", "ok": False})
 
     healthy = all(c["ok"] for c in checks)
     return {"healthy": healthy, "checks": checks}
@@ -452,8 +540,10 @@ provider "google" {{
         with open(os.path.join(tmp_dir, "provider.tf"), "w") as f:
             f.write(provider_tf)
 
-        r = _run(["terraform", "init", f"-backend-config=bucket={project_id}-tfstate"],
-                 check=False, cwd=tmp_dir)
+        r = subprocess.run(
+            ["terraform", "init", f"-backend-config=bucket={project_id}-tfstate"],
+            capture_output=True, text=True, check=False, timeout=120, cwd=tmp_dir,
+        )
         if r.returncode != 0:
             return {"success": False, "error": r.stderr.strip(), "output": r.stdout.strip()}
         return {"success": True, "output": r.stdout.strip()}
