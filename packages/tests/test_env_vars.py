@@ -69,3 +69,40 @@ class TestCloudRunConfigEnvVars:
     def test_cloud_run_config_no_secrets_field(self):
         from packages.core.schemas.configs.cloud_run import CloudRunConfig
         assert "secrets" not in CloudRunConfig.model_fields
+
+
+class TestCloudRunJobConfigEnvVars:
+    def test_job_config_accepts_env_vars(self):
+        from packages.core.schemas.configs.cloud_run_job import CloudRunJobConfig
+        config = CloudRunJobConfig(
+            image="gcr.io/test/image:latest",
+            env_vars=[
+                {"name": "BATCH_SIZE", "type": "value", "value": "100"},
+            ],
+        )
+        assert len(config.env_vars) == 1
+
+    def test_job_config_no_legacy_fields(self):
+        from packages.core.schemas.configs.cloud_run_job import CloudRunJobConfig
+        assert "env" not in CloudRunJobConfig.model_fields
+        assert "secrets" not in CloudRunJobConfig.model_fields
+
+
+class TestCloudFunctionConfigEnvVars:
+    def test_function_config_accepts_env_vars(self):
+        from packages.core.schemas.configs.cloud_function import CloudFunctionConfig
+        config = CloudFunctionConfig(
+            runtime="python312",
+            entry_point="main",
+            env_vars=[
+                {"name": "API_KEY", "type": "secret", "secret": "api-key"},
+            ],
+        )
+        assert len(config.env_vars) == 1
+        assert config.env_vars[0].type == "secret"
+
+    def test_function_config_no_legacy_fields(self):
+        from packages.core.schemas.configs.cloud_function import CloudFunctionConfig
+        assert "env" not in CloudFunctionConfig.model_fields
+        assert "secrets" not in CloudFunctionConfig.model_fields
+        assert "secret_environment_variables" not in CloudFunctionConfig.model_fields

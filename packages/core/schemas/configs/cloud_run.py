@@ -22,19 +22,6 @@ class CloudRunVpcAccessDirect(BaseModel):
     network_interfaces: list[CloudRunNetworkInterface] = []
 
 
-# Kept for backward compatibility with cloud_run_job.py and cloud_function.py imports.
-# These will be removed in Task 3 when those configs are migrated to EnvVarEntry.
-class CloudRunEnvVar(BaseModel):
-    name: str
-    value: str | None = None
-
-
-class CloudRunSecret(BaseModel):
-    env_name: str
-    secret: str
-    version: str = "latest"
-
-
 class CloudRunVolumeSecretItem(BaseModel):
     version: str = "latest"
     path: str
