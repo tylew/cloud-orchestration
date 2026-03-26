@@ -46,6 +46,8 @@ async def provision(req: ProvisionRequest, background_tasks: BackgroundTasks,
         raise HTTPException(status_code=500, detail=f"Server misconfigured: missing {', '.join(missing)}")
 
     display_name = req.display_name or "Untitled"
+    # GCP requires display name >= 4 chars — pad if needed
+    gcp_display_name = display_name if len(display_name) >= 4 else f"{display_name}-project"
 
     if req.project_id:
         project_id = req.project_id
@@ -261,8 +263,10 @@ def _run_provisioning(tenant_id: str, provision_id: str, project_ref_id: str,
 
         # Step 3: Create GCP project inside the project folder
         provision_store.update_provision_status(tenant_id, provision_id, "creating_project")
+        # GCP requires display name >= 4 chars
+        gcp_display = display_name if len(display_name) >= 4 else f"{display_name}-project"
         gcp_result = create_gcp_project(
-            project_id, display_name,
+            project_id, gcp_display,
             billing_account=billing_account or None,
             folder_id=project_folder_id,
         )
@@ -355,8 +359,9 @@ def _run_env_provisioning(tenant_id: str, provision_id: str, project_ref_id: str
 
         # Create GCP project
         provision_store.update_provision_status(tenant_id, provision_id, "creating_project")
+        gcp_display = display_name if len(display_name) >= 4 else f"{display_name}-project"
         gcp_result = create_gcp_project(
-            project_id, display_name,
+            project_id, gcp_display,
             billing_account=billing_account or None,
             folder_id=folder_id,
         )
