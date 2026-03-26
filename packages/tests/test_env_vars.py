@@ -46,3 +46,26 @@ class TestEnvVarEntry:
         from packages.core.schemas.configs.env_vars import EnvVarEntry
         entry = EnvVarEntry(name="EMPTY", type="secret")
         assert entry.secret is None
+
+
+class TestCloudRunConfigEnvVars:
+    def test_cloud_run_config_accepts_env_vars(self):
+        from packages.core.schemas.configs.cloud_run import CloudRunConfig
+        config = CloudRunConfig(
+            image="gcr.io/test/image:latest",
+            env_vars=[
+                {"name": "LOG_LEVEL", "type": "value", "value": "debug"},
+                {"name": "DB_URL", "type": "secret", "secret": "db-url"},
+            ],
+        )
+        assert len(config.env_vars) == 2
+        assert config.env_vars[0].type == "value"
+        assert config.env_vars[1].type == "secret"
+
+    def test_cloud_run_config_no_env_field(self):
+        from packages.core.schemas.configs.cloud_run import CloudRunConfig
+        assert "env" not in CloudRunConfig.model_fields
+
+    def test_cloud_run_config_no_secrets_field(self):
+        from packages.core.schemas.configs.cloud_run import CloudRunConfig
+        assert "secrets" not in CloudRunConfig.model_fields
