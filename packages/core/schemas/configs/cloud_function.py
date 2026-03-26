@@ -25,13 +25,6 @@ class CfSource(BaseModel):
     repo_source: CfRepoSource | None = None
 
 
-class CfSecretEnvVar(BaseModel):
-    key: str
-    project_id: str | None = None
-    secret: str
-    version: str = "latest"
-
-
 class CfSecretVolumeVersion(BaseModel):
     version: str = "latest"
     path: str
