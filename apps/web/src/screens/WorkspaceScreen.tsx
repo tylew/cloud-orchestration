@@ -5,6 +5,7 @@ import { useBlueprintStore } from '@/stores/blueprint-store'
 import TopBar from '@/components/layout/TopBar'
 import SplitPane from '@/components/layout/SplitPane'
 import ResourceList from '@/components/resources/ResourceList'
+import PreviewPanel from '@/components/preview/PreviewPanel'
 
 export default function WorkspaceScreen() {
   const { projectRefId } = useParams<{ projectRefId: string }>()
@@ -33,7 +34,7 @@ export default function WorkspaceScreen() {
       <div className="flex-1 overflow-hidden">
         <SplitPane
           left={<ResourceList />}
-          right={<div className="p-4 text-zinc-500 text-sm">Preview Panel — next task</div>}
+          right={<PreviewPanel />}
         />
       </div>
     </div>
