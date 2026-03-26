@@ -16,10 +16,8 @@ from packages.platform.store import provisioning as provision_store
 from packages.platform.gcp.bootstrap import (
     create_gcp_project,
     enable_apis,
-    create_tf_state_bucket,
     ensure_tenant_folder,
     generate_unique_project_id,
-    link_billing,
     setup_firebase_auth,
     verify_project_health,
 )
@@ -47,16 +45,13 @@ async def provision(req: ProvisionRequest, background_tasks: BackgroundTasks,
     if missing:
         raise HTTPException(status_code=500, detail=f"Server misconfigured: missing {', '.join(missing)}")
 
-    display_name = req.display_name or req.project_id or "Untitled"
-    if len(display_name) < 4:
-        raise HTTPException(status_code=422, detail="Project name must be at least 4 characters")
+    display_name = req.display_name or "Untitled"
 
     if req.project_id:
         project_id = req.project_id
-        tf_bucket = f"{project_id}-tfstate"
     else:
-        env_label = os.environ.get("ENVIRONMENT", "dev")
-        project_id, tf_bucket = generate_unique_project_id(display_name, environment=env_label)
+        project_id = generate_unique_project_id(display_name, environment="dev")
+
     # Always create single dev env with UUID
     environments = [{
         "id": str(_uuid.uuid4()),
@@ -65,10 +60,9 @@ async def provision(req: ProvisionRequest, background_tasks: BackgroundTasks,
         "deployed": False,
         "deployed_at": None,
         "gcp_project_id": project_id,
-        "tf_bucket": tf_bucket,
         "region": req.region,
         "provision_status": "provisioning",
-        "provision_id": "",  # set after creating provision record
+        "provision_id": "",
     }]
 
     # Quota enforcement — check BEFORE starting background work
@@ -103,7 +97,7 @@ async def provision(req: ProvisionRequest, background_tasks: BackgroundTasks,
     background_tasks.add_task(
         _run_provisioning,
         user.tenant_id, provision_id, project_ref_id, project_id, display_name,
-        req.region, environments, user.is_admin, tf_bucket,
+        req.region, environments, user.is_admin,
     )
 
     return JSONResponse(status_code=202, content={
@@ -167,7 +161,7 @@ async def add_environment(project_ref_id: str, req: AddEnvRequest,
     )
 
     display_name = project.get("display_name", "project")
-    project_id, tf_bucket = generate_unique_project_id(display_name, environment=req.name)
+    project_id = generate_unique_project_id(display_name, environment=req.name)
 
     # Create env entry
     env_entry = {
@@ -177,7 +171,6 @@ async def add_environment(project_ref_id: str, req: AddEnvRequest,
         "deployed": False,
         "deployed_at": None,
         "gcp_project_id": project_id,
-        "tf_bucket": tf_bucket,
         "region": region,
         "provision_status": "provisioning",
         "provision_id": "",
@@ -200,7 +193,7 @@ async def add_environment(project_ref_id: str, req: AddEnvRequest,
     background_tasks.add_task(
         _run_env_provisioning,
         user.tenant_id, provision_id, project_ref_id, req.name,
-        project_id, display_name, region, user.is_admin, tf_bucket,
+        project_id, display_name, region, user.is_admin,
     )
 
     return JSONResponse(status_code=202, content={
@@ -213,7 +206,7 @@ async def add_environment(project_ref_id: str, req: AddEnvRequest,
 
 def _run_provisioning(tenant_id: str, provision_id: str, project_ref_id: str,
                       project_id: str, display_name: str, region: str,
-                      environments: list, is_admin: bool, tf_bucket: str = ""):
+                      environments: list, is_admin: bool):
     """Background task that runs all provisioning steps."""
     tenants_folder_id = os.environ.get("TENANTS_FOLDER_ID", "")
     billing_account = os.environ.get("BILLING_ACCOUNT", "")
@@ -308,21 +301,7 @@ def _run_provisioning(tenant_id: str, provision_id: str, project_ref_id: str,
             )
             return
 
-        # Step 5: Create tfstate bucket
-        provision_store.update_provision_status(tenant_id, provision_id, "creating_bucket")
-        bucket_result = create_tf_state_bucket(project_id, region)
-        provision_store.update_provision_status(
-            tenant_id, provision_id, "creating_bucket",
-            step_result={"step": "create_bucket", **bucket_result},
-        )
-        if "error" in bucket_result:
-            provision_store.update_provision_status(
-                tenant_id, provision_id, "failed",
-                error=bucket_result["error"],
-            )
-            return
-
-        # Step 6: Setup Firebase Auth
+        # Step 5: Setup Firebase Auth
         provision_store.update_provision_status(tenant_id, provision_id, "setup_firebase")
         firebase_result = setup_firebase_auth(project_id)
         provision_store.update_provision_status(
@@ -356,7 +335,7 @@ def _run_provisioning(tenant_id: str, provision_id: str, project_ref_id: str,
 
 def _run_env_provisioning(tenant_id: str, provision_id: str, project_ref_id: str,
                           env_name: str, project_id: str, display_name: str,
-                          region: str, is_admin: bool, tf_bucket: str):
+                          region: str, is_admin: bool):
     """Background task that provisions a GCP project for a new environment."""
     billing_account = os.environ.get("BILLING_ACCOUNT", "")
 
@@ -395,13 +374,6 @@ def _run_env_provisioning(tenant_id: str, provision_id: str, project_ref_id: str
         if failed_apis:
             _fail_env_provision(tenant_id, provision_id, project_ref_id, env_name,
                                 f"Failed to enable APIs: {', '.join(a['api'] for a in failed_apis)}")
-            return
-
-        # Create tfstate bucket
-        provision_store.update_provision_status(tenant_id, provision_id, "creating_bucket")
-        bucket_result = create_tf_state_bucket(project_id, region)
-        if "error" in bucket_result:
-            _fail_env_provision(tenant_id, provision_id, project_ref_id, env_name, bucket_result["error"])
             return
 
         # Setup Firebase Auth

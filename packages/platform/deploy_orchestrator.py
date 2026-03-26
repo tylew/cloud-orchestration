@@ -63,6 +63,8 @@ def _run_deploy(tenant_id: str, deploy_id: str, project_ref_id: str,
                 tf_files=tf_files,
                 tf_bucket=tf_bucket,
                 region=region,
+                tenant_id=tenant_id,
+                project_ref_id=project_ref_id,
             )
         except Exception as e:
             update_deploy_status(tenant_id, deploy_id, "failed",

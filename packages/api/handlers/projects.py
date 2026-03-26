@@ -1,6 +1,7 @@
 """Project reference CRUD for multi-tenant blueprint targeting."""
 
 import logging
+import os
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import JSONResponse
@@ -129,8 +130,9 @@ async def deploy_env(project_ref_id: str, env_name: str, background_tasks: Backg
         raise HTTPException(status_code=422, detail=f"Environment '{env_name}' is not provisioned")
 
     gcp_project_id = env_entry.get("gcp_project_id", "")
-    tf_bucket = env_entry.get("tf_bucket", "")
     region = env_entry.get("region", "us-central1")
+    # Shared TF state bucket on host project — prefixed per tenant/project/env
+    tf_bucket = os.environ.get("TF_STATE_BUCKET", f"{os.environ.get('GCP_PROJECT_ID', 'pl4m-host-dev')}-tfstate")
 
     if not gcp_project_id:
         raise HTTPException(status_code=422, detail=f"Environment '{env_name}' has no GCP project ID")

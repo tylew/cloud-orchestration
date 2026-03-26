@@ -64,44 +64,34 @@ class BootstrapResult:
 def generate_project_id(display_name: str, environment: str = "") -> str:
     """Generate a GCP-compliant project ID from a display name.
 
-    GCP limit: 30 chars.
-    With env:  slug (14) + '-' + env (3-4) + '-' + uuid (6) = ~26-30
-    Without:   slug (18) + '-pl4m-' (6) + uuid (6) = 30
+    Format: {slug}-{env}-{uuid8}
+    GCP limit: 30 chars, min 6 chars.
+    The display name can be any length — we truncate the slug portion.
     """
     env_tag = environment[:4] if environment else "pl4m"
-    prefix_len = 30 - len(env_tag) - 1 - 6 - 1  # slug-env-uuid
+    uid = uuid.uuid4().hex[:8]
+    # slug-env-uid: need room for env tag + uid + 2 dashes
+    prefix_len = 30 - len(env_tag) - 1 - 8 - 1
     slug = re.sub(r'[^a-z0-9-]', '-', display_name.lower())
     slug = re.sub(r'-+', '-', slug).strip('-')[:prefix_len]
-    short_id = uuid.uuid4().hex[:6]
-    return f"{slug}-{env_tag}-{short_id}" if slug else f"project-{env_tag}-{short_id}"
+    if slug:
+        return f"{slug}-{env_tag}-{uid}"
+    return f"p-{env_tag}-{uid}"
 
 
-def generate_unique_project_id(display_name: str, max_retries: int = 5, environment: str = "") -> tuple[str, str]:
-    """Generate a unique project ID + bucket name, retrying on collision.
+def generate_unique_project_id(display_name: str, max_retries: int = 5, environment: str = "") -> str:
+    """Generate a unique GCP project ID, retrying on collision.
 
-    Returns (project_id, bucket_name) tuple.
+    Returns project_id string. TF state is stored in a shared host bucket,
+    so no per-project bucket is needed.
     """
-    storage_client = storage.Client()
     for _ in range(max_retries):
         candidate = generate_project_id(display_name, environment)
-        bucket = f"{candidate}-tfstate"
-        # Check if GCP project exists
         if validate_project_exists(candidate):
             log.info("Project %s already exists, retrying", candidate)
             continue
-        # Check if bucket exists
-        try:
-            storage_client.get_bucket(bucket)
-            log.info("Bucket %s already exists, retrying", bucket)
-            continue
-        except gcp_exceptions.NotFound:
-            pass  # Bucket doesn't exist — good
-        except Exception:
-            pass  # Can't check — proceed anyway
-        return (candidate, bucket)
-    # Fallback: just return the last generated one
-    candidate = generate_project_id(display_name, environment)
-    return (candidate, f"{candidate}-tfstate")
+        return candidate
+    return generate_project_id(display_name, environment)
 
 
 def validate_project_exists(project_id: str) -> bool:

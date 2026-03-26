@@ -7,7 +7,6 @@ export type Environment = {
   deployed: boolean
   deployed_at: string | null
   gcp_project_id: string
-  tf_bucket: string
   region: string
   provision_status: ProvisionStatus
   provision_id: string
