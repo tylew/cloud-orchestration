@@ -98,7 +98,7 @@ Deferred to future milestone. Tracked but not in current roadmap.
 
 | Feature | Reason |
 |---------|--------|
-| Code implementation | This milestone is design specification only — no code changes |
+| Code implementation | This milestone is design specification only -- no code changes |
 | MCP server implementation | Deferred until platform business logic is implemented |
 | AI agent code generation | Deferred until MCP tools provide ground truth access |
 | Multi-cloud support | GCP only by design constraint |
@@ -112,58 +112,58 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| RSLC-01 | - | Pending |
-| RSLC-02 | - | Pending |
-| RSLC-03 | - | Pending |
-| RSLC-04 | - | Pending |
-| RSLC-05 | - | Pending |
-| RSLC-06 | - | Pending |
-| RSLC-07 | - | Pending |
-| DPLY-01 | - | Pending |
-| DPLY-02 | - | Pending |
-| DPLY-03 | - | Pending |
-| DPLY-04 | - | Pending |
-| DPLY-05 | - | Pending |
-| DPLY-06 | - | Pending |
-| DPLY-07 | - | Pending |
-| DPLY-08 | - | Pending |
-| DPLY-09 | - | Pending |
-| DPLY-10 | - | Pending |
-| IAM-01 | - | Pending |
-| IAM-02 | - | Pending |
-| IAM-03 | - | Pending |
-| IAM-04 | - | Pending |
-| IAM-05 | - | Pending |
-| IAM-06 | - | Pending |
-| NET-01 | - | Pending |
-| NET-02 | - | Pending |
-| NET-03 | - | Pending |
-| NET-04 | - | Pending |
-| NET-05 | - | Pending |
-| NET-06 | - | Pending |
-| DBLC-01 | - | Pending |
-| DBLC-02 | - | Pending |
-| DBLC-03 | - | Pending |
-| DBLC-04 | - | Pending |
-| DBLC-05 | - | Pending |
-| DBLC-06 | - | Pending |
-| ENVM-01 | - | Pending |
-| ENVM-02 | - | Pending |
-| ENVM-03 | - | Pending |
-| ENVM-04 | - | Pending |
-| ENVM-05 | - | Pending |
-| ENVM-06 | - | Pending |
-| PROV-01 | - | Pending |
-| PROV-02 | - | Pending |
-| PROV-03 | - | Pending |
-| PROV-04 | - | Pending |
-| PROV-05 | - | Pending |
+| RSLC-01 | Phase 1 | Pending |
+| RSLC-02 | Phase 1 | Pending |
+| RSLC-03 | Phase 1 | Pending |
+| RSLC-04 | Phase 2 | Pending |
+| RSLC-05 | Phase 2 | Pending |
+| RSLC-06 | Phase 2 | Pending |
+| RSLC-07 | Phase 2 | Pending |
+| DPLY-01 | Phase 3 | Pending |
+| DPLY-02 | Phase 4 | Pending |
+| DPLY-03 | Phase 4 | Pending |
+| DPLY-04 | Phase 3 | Pending |
+| DPLY-05 | Phase 3 | Pending |
+| DPLY-06 | Phase 4 | Pending |
+| DPLY-07 | Phase 4 | Pending |
+| DPLY-08 | Phase 5 | Pending |
+| DPLY-09 | Phase 5 | Pending |
+| DPLY-10 | Phase 3 | Pending |
+| IAM-01 | Phase 6 | Pending |
+| IAM-02 | Phase 6 | Pending |
+| IAM-03 | Phase 6 | Pending |
+| IAM-04 | Phase 6 | Pending |
+| IAM-05 | Phase 6 | Pending |
+| IAM-06 | Phase 6 | Pending |
+| NET-01 | Phase 7 | Pending |
+| NET-02 | Phase 7 | Pending |
+| NET-03 | Phase 7 | Pending |
+| NET-04 | Phase 7 | Pending |
+| NET-05 | Phase 7 | Pending |
+| NET-06 | Phase 7 | Pending |
+| DBLC-01 | Phase 8 | Pending |
+| DBLC-02 | Phase 8 | Pending |
+| DBLC-03 | Phase 8 | Pending |
+| DBLC-04 | Phase 8 | Pending |
+| DBLC-05 | Phase 8 | Pending |
+| DBLC-06 | Phase 8 | Pending |
+| ENVM-01 | Phase 9 | Pending |
+| ENVM-02 | Phase 9 | Pending |
+| ENVM-03 | Phase 9 | Pending |
+| ENVM-04 | Phase 9 | Pending |
+| ENVM-05 | Phase 9 | Pending |
+| ENVM-06 | Phase 9 | Pending |
+| PROV-01 | Phase 10 | Pending |
+| PROV-02 | Phase 10 | Pending |
+| PROV-03 | Phase 10 | Pending |
+| PROV-04 | Phase 10 | Pending |
+| PROV-05 | Phase 10 | Pending |
 
 **Coverage:**
 - v1 requirements: 45 total
-- Mapped to phases: 0
-- Unmapped: 45
+- Mapped to phases: 45
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-26*
-*Last updated: 2026-03-26 after initial definition*
+*Last updated: 2026-03-26 after roadmap creation*
