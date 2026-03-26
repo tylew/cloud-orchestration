@@ -209,12 +209,33 @@ def _firebase_api(method: str, url: str, token: str, body: dict | None = None) -
         return {"error": error_body, "status": e.code}
 
 
+def _poll_operation(operation_name: str, token: str, max_wait: int = 120) -> dict:
+    """Poll a long-running operation until done or timeout."""
+    url = f"https://firebase.googleapis.com/v1beta1/{operation_name}"
+    for _ in range(max_wait // 5):
+        result = _firebase_api("GET", url, token)
+        if result.get("done"):
+            return result
+        if "error" in result and "status" not in result:
+            return result  # API error, not operation error
+        time.sleep(5)
+    return {"error": "Operation timed out", "name": operation_name}
+
+
 def add_firebase_to_project(project_id: str) -> dict:
-    """Add Firebase to a GCP project and return the operation name."""
+    """Add Firebase to a GCP project. Waits for the operation to complete."""
     token = _get_access_token()
     url = f"https://firebase.googleapis.com/v1beta1/projects/{project_id}:addFirebase"
     result = _firebase_api("POST", url, token)
     log.info("addFirebase result: %s", result)
+
+    # addFirebase returns a long-running operation — poll until done
+    op_name = result.get("name")
+    if op_name and not result.get("done"):
+        log.info("Waiting for addFirebase operation: %s", op_name)
+        result = _poll_operation(op_name, token)
+        log.info("addFirebase operation complete: %s", result.get("done"))
+
     return result
 
 
