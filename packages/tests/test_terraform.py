@@ -163,3 +163,97 @@ class TestEnvVarsTerraform:
         main = files["main.tf"]
         assert "secret_environment_variables" in main
         assert "API_KEY" in main
+
+
+class TestEnvVarsSmoke:
+    """Smoke tests: verify TF output is valid for real-world env_vars configs."""
+
+    def test_cloud_run_mixed_env_vars_produces_valid_tf(self):
+        """Cloud Run with both value and secret env vars generates correct HCL."""
+        data = {
+            "global": {"project_id": "smoke-test", "region": "us-central1", "environment": "dev"},
+            "nodes": [
+                {"name": "my-sa", "type": "service_account", "config": {"account_id": "my-sa"}},
+                {"name": "db-secret", "type": "secret_manager", "config": {}},
+                {"name": "api-key-secret", "type": "secret_manager", "config": {}},
+                {"name": "my-service", "type": "cloud_run", "config": {
+                    "image": "gcr.io/smoke-test/api:latest",
+                    "service_account": "my-sa",
+                    "env_vars": [
+                        {"name": "LOG_LEVEL", "type": "value", "value": "info"},
+                        {"name": "APP_ENV", "type": "value", "value": "production"},
+                        {"name": "DATABASE_URL", "type": "secret", "secret": "node:db-secret.secret_id"},
+                        {"name": "API_KEY", "type": "secret", "secret": "node:api-key-secret.secret_id", "version": "2"},
+                    ],
+                }, "depends_on": ["my-sa", "db-secret", "api-key-secret"]},
+            ],
+        }
+        envelope = Envelope.model_validate(data)
+        files = generate_terraform(envelope)
+        main = files["main.tf"]
+
+        # Value env vars
+        assert 'name  = "LOG_LEVEL"' in main
+        assert 'value = "info"' in main
+        assert 'name  = "APP_ENV"' in main
+        assert 'value = "production"' in main
+
+        # Secret env vars
+        assert 'name = "DATABASE_URL"' in main
+        assert 'name = "API_KEY"' in main
+        assert "secret_key_ref" in main
+        assert 'version = "2"' in main
+
+        # Should have provider.tf and variables.tf too
+        assert "provider.tf" in files
+        assert "variables.tf" in files
+
+    def test_cloud_function_mixed_env_vars_produces_valid_tf(self):
+        """Cloud Function with both value and secret env vars generates correct HCL."""
+        data = {
+            "global": {"project_id": "smoke-test", "region": "us-central1", "environment": "dev"},
+            "nodes": [
+                {"name": "func-sa", "type": "service_account", "config": {"account_id": "func-sa"}},
+                {"name": "my-secret", "type": "secret_manager", "config": {}},
+                {"name": "my-func", "type": "cloud_function", "config": {
+                    "runtime": "python312",
+                    "entry_point": "handler",
+                    "service_account": "func-sa",
+                    "env_vars": [
+                        {"name": "REGION", "type": "value", "value": "us-central1"},
+                        {"name": "SECRET_TOKEN", "type": "secret", "secret": "node:my-secret.secret_id"},
+                    ],
+                }, "depends_on": ["func-sa", "my-secret"]},
+            ],
+        }
+        envelope = Envelope.model_validate(data)
+        files = generate_terraform(envelope)
+        main = files["main.tf"]
+
+        # Value env vars use environment_variables map
+        assert "environment_variables" in main
+        assert "REGION" in main
+
+        # Secret env vars use secret_environment_variables block
+        assert "secret_environment_variables" in main
+        assert "SECRET_TOKEN" in main
+
+    def test_no_env_vars_produces_clean_tf(self):
+        """Compute nodes with empty env_vars don't produce spurious blocks."""
+        data = {
+            "global": {"project_id": "smoke-test", "region": "us-central1", "environment": "dev"},
+            "nodes": [
+                {"name": "my-sa", "type": "service_account", "config": {"account_id": "my-sa"}},
+                {"name": "clean-svc", "type": "cloud_run", "config": {
+                    "image": "gcr.io/smoke-test/clean:latest",
+                    "service_account": "my-sa",
+                }, "depends_on": ["my-sa"]},
+            ],
+        }
+        envelope = Envelope.model_validate(data)
+        files = generate_terraform(envelope)
+        main = files["main.tf"]
+
+        # Should not contain env or secret blocks (beyond the resource itself)
+        assert "secret_key_ref" not in main
+        assert "value_source" not in main
