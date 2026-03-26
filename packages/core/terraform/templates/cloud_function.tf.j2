@@ -1,0 +1,91 @@
+resource "google_cloudfunctions2_function" "{{ node.name }}" {
+  name     = "${var.environment}-{{ node.name }}"
+  location = var.gcp_region
+  project  = var.gcp_project_id
+
+{% if config.labels %}
+  labels = {
+{% for k, v in config.labels.items() %}
+    {{ k }} = "{{ v }}"
+{% endfor %}
+  }
+{% endif %}
+
+  build_config {
+    runtime     = "{{ config.runtime }}"
+    entry_point = "{{ config.entry_point }}"
+{% if config.source and config.source.storage_source %}
+    source {
+      storage_source {
+        bucket = "{{ config.source.storage_source.bucket }}"
+        object = "{{ config.source.storage_source.object }}"
+      }
+    }
+{% elif config.source_bucket %}
+    source {
+      storage_source {
+        bucket = "{{ config.source_bucket }}"
+        object = "{{ config.source_object }}"
+      }
+    }
+{% endif %}
+  }
+
+  service_config {
+    available_cpu                    = "{{ config.cpu }}"
+    available_memory                 = "{{ config.memory }}"
+    timeout_seconds                  = {{ config.timeout_seconds }}
+    min_instance_count               = {{ config.min_instances }}
+    max_instance_count               = {{ config.max_instances }}
+    max_instance_request_concurrency = {{ config.max_concurrent_requests }}
+    ingress_settings                 = "{{ config.ingress }}"
+    service_account_email            = {{ resolve_ref(config.service_account) if config.service_account.startswith('node:') else '"' ~ config.service_account ~ '"' }}
+{% if config.vpc_connector %}
+    vpc_connector                    = {{ resolve_ref(config.vpc_connector) }}
+    vpc_connector_egress_settings    = "{{ config.vpc_connector_egress_settings }}"
+{% endif %}
+
+{% set value_vars = config.env_vars | selectattr("type", "equalto", "value") | list %}
+{% if value_vars %}
+    environment_variables = {
+{% for e in value_vars %}
+      {{ e.name }} = "{{ e.value }}"
+{% endfor %}
+    }
+{% endif %}
+
+{% for e in config.env_vars if e.type == "secret" %}
+    secret_environment_variables {
+      key        = "{{ e.name }}"
+      project_id = var.gcp_project_id
+      secret     = {{ resolve_ref(e.secret) if e.secret.startswith('node:') else '"' ~ e.secret ~ '"' }}
+      version    = "{{ e.version }}"
+    }
+{% endfor %}
+  }
+
+{% if config.event_trigger %}
+  event_trigger {
+    event_type   = "{{ config.event_trigger.event_type }}"
+    retry_policy = "{{ config.event_trigger.retry_policy }}"
+{% if config.event_trigger.pubsub_topic %}
+    pubsub_topic = {{ resolve_ref(config.event_trigger.pubsub_topic) }}
+{% endif %}
+{% if config.event_trigger.trigger_region %}
+    trigger_region = "{{ config.event_trigger.trigger_region }}"
+{% endif %}
+{% if config.event_trigger.service_account_email %}
+    service_account_email = "{{ config.event_trigger.service_account_email }}"
+{% endif %}
+{% for ef in config.event_trigger.event_filters %}
+    event_filters {
+      attribute = "{{ ef.attribute }}"
+      value     = "{{ ef.value }}"
+{% if ef.operator %}
+      operator  = "{{ ef.operator }}"
+{% endif %}
+    }
+{% endfor %}
+  }
+{% endif %}
+}

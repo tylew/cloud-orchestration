@@ -77,3 +77,89 @@ class TestPreviewResources:
         envelope = Envelope.model_validate(data)
         resources = preview_resources(envelope)
         assert len(resources) == 0
+
+
+class TestEnvVarsTerraform:
+    def test_cloud_run_value_env_var(self):
+        data = {
+            "global": {"project_id": "test", "region": "us-central1", "environment": "dev"},
+            "nodes": [
+                {"name": "my-sa", "type": "service_account", "config": {"account_id": "my-sa"}},
+                {"name": "my-svc", "type": "cloud_run", "config": {
+                    "image": "gcr.io/test/img:latest",
+                    "service_account": "my-sa",
+                    "env_vars": [
+                        {"name": "LOG_LEVEL", "type": "value", "value": "debug"},
+                    ],
+                }, "depends_on": ["my-sa"]},
+            ],
+        }
+        envelope = Envelope.model_validate(data)
+        files = generate_terraform(envelope)
+        main = files["main.tf"]
+        assert 'name  = "LOG_LEVEL"' in main
+        assert 'value = "debug"' in main
+
+    def test_cloud_run_secret_env_var(self):
+        data = {
+            "global": {"project_id": "test", "region": "us-central1", "environment": "dev"},
+            "nodes": [
+                {"name": "my-sa", "type": "service_account", "config": {"account_id": "my-sa"}},
+                {"name": "my-secret", "type": "secret_manager", "config": {}},
+                {"name": "my-svc", "type": "cloud_run", "config": {
+                    "image": "gcr.io/test/img:latest",
+                    "service_account": "my-sa",
+                    "env_vars": [
+                        {"name": "DB_URL", "type": "secret", "secret": "node:my-secret.secret_id"},
+                    ],
+                }, "depends_on": ["my-sa", "my-secret"]},
+            ],
+        }
+        envelope = Envelope.model_validate(data)
+        files = generate_terraform(envelope)
+        main = files["main.tf"]
+        assert 'name = "DB_URL"' in main
+        assert "secret_key_ref" in main
+
+    def test_cloud_function_value_env_var(self):
+        data = {
+            "global": {"project_id": "test", "region": "us-central1", "environment": "dev"},
+            "nodes": [
+                {"name": "my-sa", "type": "service_account", "config": {"account_id": "my-sa"}},
+                {"name": "my-func", "type": "cloud_function", "config": {
+                    "runtime": "python312",
+                    "entry_point": "main",
+                    "service_account": "my-sa",
+                    "env_vars": [
+                        {"name": "ENV", "type": "value", "value": "prod"},
+                    ],
+                }, "depends_on": ["my-sa"]},
+            ],
+        }
+        envelope = Envelope.model_validate(data)
+        files = generate_terraform(envelope)
+        main = files["main.tf"]
+        assert "environment_variables" in main
+        assert "ENV" in main
+
+    def test_cloud_function_secret_env_var(self):
+        data = {
+            "global": {"project_id": "test", "region": "us-central1", "environment": "dev"},
+            "nodes": [
+                {"name": "my-sa", "type": "service_account", "config": {"account_id": "my-sa"}},
+                {"name": "my-secret", "type": "secret_manager", "config": {}},
+                {"name": "my-func", "type": "cloud_function", "config": {
+                    "runtime": "python312",
+                    "entry_point": "main",
+                    "service_account": "my-sa",
+                    "env_vars": [
+                        {"name": "API_KEY", "type": "secret", "secret": "node:my-secret.secret_id"},
+                    ],
+                }, "depends_on": ["my-sa", "my-secret"]},
+            ],
+        }
+        envelope = Envelope.model_validate(data)
+        files = generate_terraform(envelope)
+        main = files["main.tf"]
+        assert "secret_environment_variables" in main
+        assert "API_KEY" in main

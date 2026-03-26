@@ -1,0 +1,70 @@
+resource "google_cloud_run_v2_service" "{{ node.name }}" {
+  name     = "${var.environment}-{{ node.name }}"
+  location = var.gcp_region
+  project  = var.gcp_project_id
+  ingress  = "{{ config.ingress }}"
+
+{% if config.labels %}
+  labels = {
+{% for k, v in config.labels.items() %}
+    {{ k }} = "{{ v }}"
+{% endfor %}
+  }
+{% endif %}
+
+  template {
+    service_account                  = {{ resolve_ref(config.service_account) if config.service_account.startswith('node:') else '"' ~ config.service_account ~ '"' }}
+    timeout                          = "{{ config.timeout }}"
+    max_instance_request_concurrency = {{ config.max_concurrent_requests }}
+    execution_environment            = "{{ config.execution_environment }}"
+    session_affinity                 = {{ config.session_affinity | lower }}
+
+    scaling {
+      min_instance_count = {{ config.min_instances }}
+      max_instance_count = {{ config.max_instances }}
+    }
+
+{% if config.vpc_access and config.vpc_access.connector %}
+    vpc_access {
+      connector = {{ resolve_ref(config.vpc_access.connector) }}
+      egress    = "{{ config.vpc_access.egress }}"
+    }
+{% endif %}
+
+    containers {
+      image = {{ resolve_ref(config.image) if config.image.startswith('node:') else '"' ~ config.image ~ '"' }}
+
+      ports {
+        container_port = {{ config.port }}
+      }
+
+      resources {
+        limits = {
+          cpu    = "{{ config.cpu }}"
+          memory = "{{ config.memory }}"
+        }
+        cpu_idle          = {{ config.cpu_idle | lower }}
+        startup_cpu_boost = {{ config.startup_cpu_boost | lower }}
+      }
+
+{% for e in config.env_vars if e.type == "value" %}
+      env {
+        name  = "{{ e.name }}"
+        value = "{{ e.value }}"
+      }
+{% endfor %}
+
+{% for e in config.env_vars if e.type == "secret" %}
+      env {
+        name = "{{ e.name }}"
+        value_source {
+          secret_key_ref {
+            secret  = {{ resolve_ref(e.secret) if e.secret.startswith('node:') else '"' ~ e.secret ~ '"' }}
+            version = "{{ e.version }}"
+          }
+        }
+      }
+{% endfor %}
+    }
+  }
+}
