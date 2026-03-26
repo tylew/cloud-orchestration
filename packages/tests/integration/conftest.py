@@ -46,6 +46,29 @@ def api_client():
 
 
 @pytest.fixture
+def sample_project_data(test_prefix):
+    """Project data with per-env GCP fields matching the new format."""
+    gcp_project_id = os.environ.get("GCP_PROJECT_ID", "my-super-cool-app-dev-3f74d0")
+    return {
+        "project_id": gcp_project_id,
+        "display_name": f"Test Project {test_prefix}",
+        "region": "us-central1",
+        "environments": [{
+            "id": str(uuid.uuid4()),
+            "name": "dev",
+            "order": 0,
+            "deployed": False,
+            "deployed_at": None,
+            "gcp_project_id": gcp_project_id,
+            "tf_bucket": f"{gcp_project_id}-tfstate",
+            "region": "us-central1",
+            "provision_status": "ready",
+            "provision_id": "",
+        }],
+    }
+
+
+@pytest.fixture
 def sample_envelope_data():
     return {
         "global": {

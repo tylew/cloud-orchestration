@@ -12,14 +12,9 @@ skip_deploy = os.environ.get("SKIP_DEPLOY_TEST", "").lower() in ("true", "1")
 @pytest.mark.skipif(skip_deploy, reason="SKIP_DEPLOY_TEST is set")
 class TestDeployPipeline:
     @pytest.mark.timeout(300)
-    def test_full_deploy_flow(self, api_client, test_prefix, sample_envelope_data):
-        # Create project with a "dev" environment so the deploy endpoint can find it
-        create_resp = api_client.post("/api/projects", json={
-            "project_id": f"gcp-deploy-{test_prefix}",
-            "display_name": f"Deploy Test {test_prefix}",
-            "region": "us-central1",
-            "environments": ["dev"],
-        })
+    def test_full_deploy_flow(self, api_client, test_prefix, sample_envelope_data, sample_project_data):
+        # Create project with per-env GCP fields
+        create_resp = api_client.post("/api/projects", json=sample_project_data)
         assert create_resp.status_code == 200
         created = create_resp.json()
         project_ref_id = created.get("id")
