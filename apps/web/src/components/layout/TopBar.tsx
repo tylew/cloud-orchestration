@@ -1,11 +1,13 @@
 import { useNavigate } from 'react-router-dom'
 import { useProjectStore } from '@/stores/project-store'
+import { useAuthStore } from '@/stores/auth-store'
 import { Button } from '@/components/ui/button'
 import type { Environment } from '@/types/project'
 
 export default function TopBar() {
   const navigate = useNavigate()
   const { currentProject, selectedEnv, selectEnv } = useProjectStore()
+  const { user, signOut } = useAuthStore()
 
   if (!currentProject) return null
 
@@ -36,8 +38,12 @@ export default function TopBar() {
           ))}
         </select>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
         <Button size="sm">Deploy</Button>
+        <span className="text-zinc-500 text-xs">{user?.email}</span>
+        <Button size="sm" variant="ghost" className="text-zinc-500" onClick={signOut}>
+          Sign Out
+        </Button>
       </div>
     </div>
   )

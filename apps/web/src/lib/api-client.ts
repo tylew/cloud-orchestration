@@ -1,10 +1,20 @@
 import type { ApiResult } from '@/types/api'
+import { useAuthStore } from '@/stores/auth-store'
 
 async function request<T>(method: string, url: string, body?: unknown): Promise<ApiResult<T>> {
   try {
+    const token = await useAuthStore.getState().getToken()
+    const headers: Record<string, string> = {}
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+    if (body) {
+      headers['Content-Type'] = 'application/json'
+    }
+
     const res = await fetch(url, {
       method,
-      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      headers,
       body: body ? JSON.stringify(body) : undefined,
     })
     const data = await res.json().catch(() => ({}))
