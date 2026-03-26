@@ -18,19 +18,17 @@ type ProvisionRecord = {
 }
 
 const STEP_LABELS: Record<string, string> = {
-  creating_tenant_folder: 'Setting up tenant folder',
-  creating_env_folder: 'Setting up environment folder',
+  creating_tenant_folder: 'Creating tenant folder',
+  creating_project_folder: 'Creating project folder',
   creating_project: 'Creating GCP project',
   enabling_apis: 'Enabling GCP APIs',
-  creating_bucket: 'Creating Terraform state bucket',
   setup_firebase: 'Setting up Firebase Auth',
   verifying: 'Verifying project health',
   // Step result labels (from step_result.step field)
   ensure_tenant_folder: 'Tenant folder',
-  ensure_env_folder: 'Environment folder',
+  ensure_project_folder: 'Project folder',
   create_project: 'GCP project',
   enable_apis: 'GCP APIs',
-  create_bucket: 'Terraform state bucket',
   verify_health: 'Project health',
 }
 

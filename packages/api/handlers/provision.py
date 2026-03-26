@@ -212,17 +212,18 @@ def _run_provisioning(tenant_id: str, provision_id: str, project_ref_id: str,
     billing_account = os.environ.get("BILLING_ACCOUNT", "")
 
     try:
-        # Step 1: Ensure tenant folder exists inside the tenants folder
+        # Folder hierarchy: dev-tenants/{tenant_uid}/{project_name}/{gcp_project}
+        #
+        # Step 1: Ensure tenant folder (named by Firebase UID)
         provision_store.update_provision_status(tenant_id, provision_id, "creating_tenant_folder")
+        project_folder_id = None
         if tenants_folder_id:
             try:
-                tenant_data = tenant_store.get_tenant(tenant_id)
-                tenant_display = tenant_data.get("display_name", tenant_id) if tenant_data else tenant_id
-                folder_id = ensure_tenant_folder(tenant_id, tenant_display, tenants_folder_id)
-                tenant_store.update_tenant(tenant_id, {"folder_id": folder_id})
+                tenant_folder_id = ensure_tenant_folder(tenant_id, tenant_id, tenants_folder_id)
+                tenant_store.update_tenant(tenant_id, {"folder_id": tenant_folder_id})
                 provision_store.update_provision_status(
                     tenant_id, provision_id, "creating_tenant_folder",
-                    step_result={"step": "ensure_tenant_folder", "success": True, "folder_id": folder_id},
+                    step_result={"step": "ensure_tenant_folder", "success": True, "folder_id": tenant_folder_id},
                 )
             except Exception as e:
                 log.warning("Failed to create tenant folder: %s", e)
@@ -230,43 +231,40 @@ def _run_provisioning(tenant_id: str, provision_id: str, project_ref_id: str,
                     tenant_id, provision_id, "creating_tenant_folder",
                     step_result={"step": "ensure_tenant_folder", "success": False, "error": str(e)},
                 )
-                folder_id = None
+                tenant_folder_id = None
+
+            # Step 2: Create project folder under tenant folder (named by display name)
+            if tenant_folder_id:
+                try:
+                    provision_store.update_provision_status(tenant_id, provision_id, "creating_project_folder")
+                    project_folder_id = ensure_tenant_folder(
+                        f"{tenant_id}-{display_name[:20]}",  # unique lookup key
+                        display_name,                          # display name in GCP
+                        tenant_folder_id,                      # parent: tenant folder
+                    )
+                    provision_store.update_provision_status(
+                        tenant_id, provision_id, "creating_project_folder",
+                        step_result={"step": "ensure_project_folder", "success": True, "folder_id": project_folder_id},
+                    )
+                except Exception as e:
+                    log.warning("Failed to create project folder: %s — using tenant folder", e)
+                    provision_store.update_provision_status(
+                        tenant_id, provision_id, "creating_project_folder",
+                        step_result={"step": "ensure_project_folder", "success": False, "error": str(e)},
+                    )
+                    project_folder_id = tenant_folder_id
         else:
-            folder_id = None
             provision_store.update_provision_status(
                 tenant_id, provision_id, "creating_tenant_folder",
                 step_result={"step": "ensure_tenant_folder", "skipped": True},
             )
 
-        # Step 1b: Create environment subfolder within tenant folder
-        if folder_id:
-            env_label = os.environ.get("ENVIRONMENT", "dev")
-            try:
-                env_folder_id = ensure_tenant_folder(
-                    f"{tenant_id}-{env_label}",  # unique ID for env subfolder
-                    env_label,                    # display name: "dev" or "prod"
-                    folder_id,                    # parent: the tenant folder
-                )
-                provision_store.update_provision_status(
-                    tenant_id, provision_id, "creating_env_folder",
-                    step_result={"step": "ensure_env_folder", "success": True, "folder_id": env_folder_id},
-                )
-                # Use the env subfolder for project creation instead of the tenant folder
-                folder_id = env_folder_id
-            except Exception as e:
-                log.warning("Failed to create env subfolder: %s — using tenant folder directly", e)
-                provision_store.update_provision_status(
-                    tenant_id, provision_id, "creating_env_folder",
-                    step_result={"step": "ensure_env_folder", "success": False, "error": str(e)},
-                )
-                # Fall through — folder_id remains the tenant folder
-
-        # Step 2: Create GCP project (inside tenant folder if available)
+        # Step 3: Create GCP project inside the project folder
         provision_store.update_provision_status(tenant_id, provision_id, "creating_project")
         gcp_result = create_gcp_project(
             project_id, display_name,
             billing_account=billing_account or None,
-            folder_id=folder_id,
+            folder_id=project_folder_id,
         )
         provision_store.update_provision_status(
             tenant_id, provision_id, "creating_project",
