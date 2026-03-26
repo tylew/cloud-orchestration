@@ -23,7 +23,7 @@ export default function ProjectListScreen() {
   }, [fetchProjects])
 
   const handleCreate = async () => {
-    if (!form.display_name.trim()) return
+    if (form.display_name.trim().length < 4) return
     setCreating(true)
     const result = await createProject(form)
     setCreating(false)

@@ -48,6 +48,9 @@ async def provision(req: ProvisionRequest, background_tasks: BackgroundTasks,
         raise HTTPException(status_code=500, detail=f"Server misconfigured: missing {', '.join(missing)}")
 
     display_name = req.display_name or req.project_id or "Untitled"
+    if len(display_name) < 4:
+        raise HTTPException(status_code=422, detail="Project name must be at least 4 characters")
+
     if req.project_id:
         project_id = req.project_id
         tf_bucket = f"{project_id}-tfstate"
