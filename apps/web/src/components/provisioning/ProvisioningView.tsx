@@ -22,14 +22,11 @@ const STEP_LABELS: Record<string, string> = {
   creating_project_folder: 'Creating project folder',
   creating_project: 'Creating GCP project',
   enabling_apis: 'Enabling GCP APIs',
-  setup_firebase: 'Setting up Firebase Auth',
-  verifying: 'Verifying project health',
   // Step result labels (from step_result.step field)
   ensure_tenant_folder: 'Tenant folder',
   ensure_project_folder: 'Project folder',
   create_project: 'GCP project',
   enable_apis: 'GCP APIs',
-  verify_health: 'Project health',
 }
 
 type ProvisioningViewProps = {

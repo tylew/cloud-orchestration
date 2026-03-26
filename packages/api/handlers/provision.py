@@ -18,8 +18,6 @@ from packages.platform.gcp.bootstrap import (
     enable_apis,
     ensure_tenant_folder,
     generate_unique_project_id,
-    setup_firebase_auth,
-    verify_project_health,
 )
 
 log = logging.getLogger(__name__)
@@ -308,23 +306,8 @@ def _run_provisioning(tenant_id: str, provision_id: str, project_ref_id: str,
                            f"Failed to enable APIs: {', '.join(a['api'] for a in failed_apis)}")
             return
 
-        # Step 5: Setup Firebase Auth
-        provision_store.update_provision_status(tenant_id, provision_id, "setup_firebase")
-        firebase_result = setup_firebase_auth(gcp_project_id)
-        provision_store.update_provision_status(
-            tenant_id, provision_id, "setup_firebase",
-            step_result={"step": "setup_firebase", "success": firebase_result.get("success", False)},
-        )
-
-        # Step 6: Verify health
-        provision_store.update_provision_status(tenant_id, provision_id, "verifying")
-        health = verify_project_health(gcp_project_id)
-        provision_store.update_provision_status(
-            tenant_id, provision_id, "verifying",
-            step_result={"step": "verify_health", **health},
-        )
-
         # Mark dev env as ready
+        # Note: Firebase Auth setup is optional — users can configure it later
         _update_env_provision_status(tenant_id, project_ref_id, "dev", "ready")
 
         if not is_admin:
@@ -390,14 +373,6 @@ def _run_env_provisioning(tenant_id: str, provision_id: str, project_ref_id: str
             _fail_env_provision(tenant_id, provision_id, project_ref_id, env_name,
                                 f"Failed to enable APIs: {', '.join(a['api'] for a in failed_apis)}")
             return
-
-        # Setup Firebase Auth
-        provision_store.update_provision_status(tenant_id, provision_id, "setup_firebase")
-        setup_firebase_auth(gcp_project_id)
-
-        # Verify health
-        provision_store.update_provision_status(tenant_id, provision_id, "verifying")
-        verify_project_health(gcp_project_id)
 
         # Update env entry to ready
         _update_env_provision_status(tenant_id, project_ref_id, env_name, "ready")
