@@ -34,10 +34,9 @@ const STEP_LABELS: Record<string, string> = {
 
 type ProvisioningViewProps = {
   provisionId: string
-  onReady: () => void
 }
 
-export default function ProvisioningView({ provisionId, onReady }: ProvisioningViewProps) {
+export default function ProvisioningView({ provisionId }: ProvisioningViewProps) {
   const { user } = useAuthStore()
   const [record, setRecord] = useState<ProvisionRecord | null>(null)
 
@@ -49,13 +48,10 @@ export default function ProvisioningView({ provisionId, onReady }: ProvisioningV
       if (!snap.exists()) return
       const data = snap.data() as ProvisionRecord
       setRecord(data)
-      if (data.status === 'ready') {
-        onReady()
-      }
     })
 
     return unsub
-  }, [user, provisionId, onReady])
+  }, [user, provisionId])
 
   const isFailed = record?.status === 'failed'
   const steps = record?.steps || []
