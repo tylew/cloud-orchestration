@@ -9,6 +9,11 @@ import pytest
 os.environ.setdefault("AUTH_DISABLED", "true")
 os.environ.setdefault("ENVIRONMENT", "dev")
 
+# Host project runs Firestore, Cloud Build, the API itself
+_HOST_PROJECT = os.environ.get("GCP_PROJECT_ID", "pl4m-host-dev")
+# Tenant project is the target GCP project for test deploys
+_TENANT_PROJECT = os.environ.get("TEST_TENANT_PROJECT", "my-super-cool-app-dev-3f74d0")
+
 
 def _test_prefix():
     return f"test-{uuid.uuid4().hex[:8]}"
@@ -27,15 +32,14 @@ def tenant_id():
 @pytest.fixture
 def firestore_client():
     from google.cloud import firestore
-    project = os.environ.get("GCP_PROJECT_ID", "my-super-cool-app-dev-3f74d0")
     database = os.environ.get("FIRESTORE_DATABASE", "(default)")
-    return firestore.Client(project=project, database=database)
+    return firestore.Client(project=_HOST_PROJECT, database=database)
 
 
 @pytest.fixture
 def gcs_client():
     from google.cloud import storage
-    return storage.Client(project=os.environ.get("GCP_PROJECT_ID", "my-super-cool-app-dev-3f74d0"))
+    return storage.Client(project=_HOST_PROJECT)
 
 
 @pytest.fixture
@@ -48,9 +52,8 @@ def api_client():
 @pytest.fixture
 def sample_project_data(test_prefix):
     """Project data with per-env GCP fields matching the new format."""
-    gcp_project_id = os.environ.get("GCP_PROJECT_ID", "my-super-cool-app-dev-3f74d0")
     return {
-        "project_id": gcp_project_id,
+        "project_id": _TENANT_PROJECT,
         "display_name": f"Test Project {test_prefix}",
         "region": "us-central1",
         "environments": [{
@@ -59,8 +62,8 @@ def sample_project_data(test_prefix):
             "order": 0,
             "deployed": False,
             "deployed_at": None,
-            "gcp_project_id": gcp_project_id,
-            "tf_bucket": f"{gcp_project_id}-tfstate",
+            "gcp_project_id": _TENANT_PROJECT,
+            "tf_bucket": f"{_TENANT_PROJECT}-tfstate",
             "region": "us-central1",
             "provision_status": "ready",
             "provision_id": "",
@@ -72,7 +75,7 @@ def sample_project_data(test_prefix):
 def sample_envelope_data():
     return {
         "global": {
-            "project_id": os.environ.get("GCP_PROJECT_ID", "my-super-cool-app-dev-3f74d0"),
+            "project_id": _TENANT_PROJECT,
             "region": "us-central1",
             "environment": "dev",
         },
