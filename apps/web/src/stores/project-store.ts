@@ -8,7 +8,7 @@ type ProjectState = {
   selectedEnv: string
   loading: boolean
   fetchProjects: () => Promise<void>
-  createProject: (data: { project_id: string; display_name: string; region: string; environments?: unknown[] }) => Promise<Project | null>
+  createProject: (data: { display_name: string; region?: string }) => Promise<{ project_ref_id: string } | null>
   loadProject: (projectRefId: string) => Promise<void>
   selectEnv: (envName: string) => void
   deleteProject: (projectRefId: string) => Promise<boolean>
@@ -31,7 +31,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   },
 
   createProject: async (data) => {
-    const res = await api.post<Project>('/api/projects', data)
+    const res = await api.post<{ project_ref_id: string; provision_id: string }>('/api/projects/provision', data)
     if (res.ok && res.data) {
       await get().fetchProjects()
       return res.data

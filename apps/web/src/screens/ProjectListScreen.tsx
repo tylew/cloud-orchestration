@@ -15,18 +15,22 @@ export default function ProjectListScreen() {
   const { projects, loading, fetchProjects, createProject, deleteProject } = useProjectStore()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
-  const [form, setForm] = useState({ project_id: '', display_name: '', region: 'us-central1' })
+  const [form, setForm] = useState({ display_name: '', region: 'us-central1' })
+  const [creating, setCreating] = useState(false)
 
   useEffect(() => {
     fetchProjects()
   }, [fetchProjects])
 
   const handleCreate = async () => {
+    if (!form.display_name.trim()) return
+    setCreating(true)
     const result = await createProject(form)
+    setCreating(false)
     if (result) {
       setOpen(false)
-      setForm({ project_id: '', display_name: '', region: 'us-central1' })
-      navigate(`/projects/${result.id}`)
+      setForm({ display_name: '', region: 'us-central1' })
+      navigate(`/projects/${result.project_ref_id}`)
     }
   }
 
@@ -51,19 +55,12 @@ export default function ProjectListScreen() {
             </DialogHeader>
             <div className="space-y-4 mt-4">
               <div>
-                <label className="text-sm text-zinc-400">GCP Project ID</label>
-                <Input
-                  value={form.project_id}
-                  onChange={(e) => setForm({ ...form, project_id: e.target.value })}
-                  placeholder="my-gcp-project-id"
-                />
-              </div>
-              <div>
-                <label className="text-sm text-zinc-400">Display Name</label>
+                <label className="text-sm text-zinc-400">Project Name</label>
                 <Input
                   value={form.display_name}
                   onChange={(e) => setForm({ ...form, display_name: e.target.value })}
                   placeholder="My Project"
+                  autoFocus
                 />
               </div>
               <div>
@@ -74,7 +71,9 @@ export default function ProjectListScreen() {
                   placeholder="us-central1"
                 />
               </div>
-              <Button onClick={handleCreate} className="w-full">Create</Button>
+              <Button onClick={handleCreate} className="w-full" disabled={creating}>
+                {creating ? 'Provisioning...' : 'Create Project'}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -89,7 +88,6 @@ export default function ProjectListScreen() {
           <thead>
             <tr className="border-b border-zinc-800 text-zinc-400 text-left">
               <th className="pb-3 font-medium">Name</th>
-              <th className="pb-3 font-medium">Project ID</th>
               <th className="pb-3 font-medium">Region</th>
               <th className="pb-3 font-medium">Environments</th>
               <th className="pb-3 font-medium w-20"></th>
@@ -103,18 +101,25 @@ export default function ProjectListScreen() {
                 onClick={() => navigate(`/projects/${p.id}`)}
               >
                 <td className="py-3 font-medium">{p.display_name}</td>
-                <td className="py-3 text-zinc-400 font-mono text-xs">{p.project_id}</td>
                 <td className="py-3 text-zinc-400">{p.region}</td>
                 <td className="py-3">
                   <div className="flex gap-1.5">
-                    {(p.environments || []).map((env) => (
-                      <span
-                        key={typeof env === 'string' ? env : env.name}
-                        className="px-2 py-0.5 rounded text-xs bg-zinc-800 text-zinc-300"
-                      >
-                        {typeof env === 'string' ? env : env.name}
-                      </span>
-                    ))}
+                    {(p.environments || []).map((env) => {
+                      const name = typeof env === 'string' ? env : env.name
+                      const status = typeof env === 'object' ? env.provision_status : undefined
+                      const statusColor = status === 'ready' ? 'text-green-400'
+                        : status === 'provisioning' ? 'text-yellow-400'
+                        : status === 'failed' ? 'text-red-400'
+                        : 'text-zinc-400'
+                      return (
+                        <span
+                          key={name}
+                          className="px-2 py-0.5 rounded text-xs bg-zinc-800 text-zinc-300"
+                        >
+                          <span className={statusColor}>●</span> {name}
+                        </span>
+                      )
+                    })}
                   </div>
                 </td>
                 <td className="py-3">

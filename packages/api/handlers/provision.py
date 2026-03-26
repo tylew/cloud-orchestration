@@ -88,18 +88,26 @@ async def provision(req: ProvisionRequest, background_tasks: BackgroundTasks,
     provision_id = provision_store.create_provision_record(user.tenant_id, project_id, config)
     environments[0]["provision_id"] = provision_id
 
+    # Create project doc immediately so frontend can navigate to it
+    project_result = project_store.save_project(user.tenant_id, {
+        "display_name": display_name,
+        "region": req.region,
+        "environments": environments,
+    })
+    project_ref_id = project_result["id"]
+
     # Run provisioning in background
     background_tasks.add_task(
         _run_provisioning,
-        user.tenant_id, provision_id, project_id, display_name,
+        user.tenant_id, provision_id, project_ref_id, project_id, display_name,
         req.region, environments, user.is_admin, tf_bucket,
     )
 
     return JSONResponse(status_code=202, content={
         "provision_id": provision_id,
         "project_id": project_id,
-        "tf_bucket": tf_bucket,
-        "status": "pending",
+        "project_ref_id": project_ref_id,
+        "status": "provisioning",
     })
 
 
@@ -200,9 +208,9 @@ async def add_environment(project_ref_id: str, req: AddEnvRequest,
     })
 
 
-def _run_provisioning(tenant_id: str, provision_id: str, project_id: str,
-                      display_name: str, region: str, environments: list,
-                      is_admin: bool, tf_bucket: str = ""):
+def _run_provisioning(tenant_id: str, provision_id: str, project_ref_id: str,
+                      project_id: str, display_name: str, region: str,
+                      environments: list, is_admin: bool, tf_bucket: str = ""):
     """Background task that runs all provisioning steps."""
     tenants_folder_id = os.environ.get("TENANTS_FOLDER_ID", "")
     billing_account = os.environ.get("BILLING_ACCOUNT", "")
@@ -327,25 +335,8 @@ def _run_provisioning(tenant_id: str, provision_id: str, project_id: str,
             step_result={"step": "verify_health", **health},
         )
 
-        # Save project reference
-        final_environments = [{
-            "id": str(_uuid.uuid4()),
-            "name": "dev",
-            "order": 0,
-            "deployed": False,
-            "deployed_at": None,
-            "gcp_project_id": project_id,
-            "tf_bucket": tf_bucket,
-            "region": region,
-            "provision_status": "ready",
-            "provision_id": provision_id,
-        }]
-
-        project_store.save_project(tenant_id, {
-            "display_name": display_name,
-            "region": region,
-            "environments": final_environments,
-        })
+        # Update project env status to ready
+        _update_env_provision_status(tenant_id, project_ref_id, "dev", "ready")
 
         if not is_admin:
             tenant_store.increment_used_quota(tenant_id, 1)
