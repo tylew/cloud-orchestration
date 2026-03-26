@@ -2,6 +2,8 @@
 
 import logging
 import os
+import re
+import uuid as _uuid
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import JSONResponse
@@ -45,7 +47,6 @@ async def provision(req: ProvisionRequest, background_tasks: BackgroundTasks,
     if missing:
         raise HTTPException(status_code=500, detail=f"Server misconfigured: missing {', '.join(missing)}")
 
-    import uuid as _uuid
     display_name = req.display_name or req.project_id or "Untitled"
     if req.project_id:
         project_id = req.project_id
@@ -109,6 +110,94 @@ async def get_provision_status(provision_id: str, user: CurrentUser = Depends(ge
     if not status:
         raise HTTPException(status_code=404, detail="Provision not found")
     return status
+
+
+class AddEnvRequest(BaseModel):
+    name: str
+    region: str = ""
+
+
+@router.post("/{project_ref_id}/envs")
+async def add_environment(project_ref_id: str, req: AddEnvRequest,
+                          background_tasks: BackgroundTasks,
+                          user: CurrentUser = Depends(get_current_user)):
+    """Add a new environment to an existing project, triggering GCP project provisioning."""
+    # Validate env name is kebab-case
+    if not re.match(r"^[a-z][a-z0-9]*(-[a-z0-9]+)*$", req.name):
+        raise HTTPException(status_code=422, detail="Environment name must be kebab-case")
+
+    # Get project
+    project = project_store.get_project(user.tenant_id, project_ref_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    envs = project.get("environments", [])
+
+    # Max 3 envs
+    if len(envs) >= 3:
+        raise HTTPException(status_code=422, detail="Maximum 3 environments allowed")
+
+    # Name unique
+    if any(isinstance(e, dict) and e.get("name") == req.name for e in envs):
+        raise HTTPException(status_code=409, detail=f"Environment '{req.name}' already exists")
+
+    # Validate org config
+    missing = []
+    for var in ["ORG_ID", "BILLING_ACCOUNT", "TENANTS_FOLDER_ID"]:
+        if not os.environ.get(var):
+            missing.append(var)
+    if missing:
+        raise HTTPException(status_code=500, detail=f"Server misconfigured: missing {', '.join(missing)}")
+
+    # Resolve region
+    region = req.region or next(
+        (e.get("region", "us-central1") for e in envs if isinstance(e, dict)),
+        "us-central1",
+    )
+
+    display_name = project.get("display_name", "project")
+    project_id, tf_bucket = generate_unique_project_id(display_name, environment=req.name)
+
+    # Create env entry
+    env_entry = {
+        "id": str(_uuid.uuid4()),
+        "name": req.name,
+        "order": len(envs),
+        "deployed": False,
+        "deployed_at": None,
+        "gcp_project_id": project_id,
+        "tf_bucket": tf_bucket,
+        "region": region,
+        "provision_status": "provisioning",
+        "provision_id": "",
+    }
+
+    # Create provision record
+    config = {
+        "display_name": display_name,
+        "region": region,
+        "env_name": req.name,
+    }
+    provision_id = provision_store.create_provision_record(user.tenant_id, project_id, config)
+    env_entry["provision_id"] = provision_id
+
+    # Add env to project
+    envs.append(env_entry)
+    project_store.update_project_settings(user.tenant_id, project_ref_id, {"environments": envs})
+
+    # Run provisioning in background
+    background_tasks.add_task(
+        _run_env_provisioning,
+        user.tenant_id, provision_id, project_ref_id, req.name,
+        project_id, display_name, region, user.is_admin, tf_bucket,
+    )
+
+    return JSONResponse(status_code=202, content={
+        "provision_id": provision_id,
+        "env_name": req.name,
+        "gcp_project_id": project_id,
+        "status": "provisioning",
+    })
 
 
 def _run_provisioning(tenant_id: str, provision_id: str, project_id: str,
@@ -239,7 +328,6 @@ def _run_provisioning(tenant_id: str, provision_id: str, project_id: str,
         )
 
         # Save project reference
-        import uuid as _uuid
         final_environments = [{
             "id": str(_uuid.uuid4()),
             "name": "dev",
@@ -270,3 +358,89 @@ def _run_provisioning(tenant_id: str, provision_id: str, project_id: str,
             tenant_id, provision_id, "failed",
             error=str(e),
         )
+
+
+def _run_env_provisioning(tenant_id: str, provision_id: str, project_ref_id: str,
+                          env_name: str, project_id: str, display_name: str,
+                          region: str, is_admin: bool, tf_bucket: str):
+    """Background task that provisions a GCP project for a new environment."""
+    billing_account = os.environ.get("BILLING_ACCOUNT", "")
+
+    try:
+        # Get tenant folder
+        tenant_data = tenant_store.get_tenant(tenant_id)
+        folder_id = tenant_data.get("folder_id") if tenant_data else None
+
+        # Create env subfolder
+        if folder_id:
+            provision_store.update_provision_status(tenant_id, provision_id, "creating_env_folder")
+            try:
+                env_folder_id = ensure_tenant_folder(
+                    f"{tenant_id}-{env_name}", env_name, folder_id,
+                )
+                folder_id = env_folder_id
+            except Exception as e:
+                log.warning("Failed to create env subfolder: %s", e)
+
+        # Create GCP project
+        provision_store.update_provision_status(tenant_id, provision_id, "creating_project")
+        gcp_result = create_gcp_project(
+            project_id, display_name,
+            billing_account=billing_account or None,
+            folder_id=folder_id,
+        )
+        if not gcp_result.get("created") and not gcp_result.get("skipped"):
+            _fail_env_provision(tenant_id, provision_id, project_ref_id, env_name,
+                                gcp_result.get("error", "Failed to create project"))
+            return
+
+        # Enable APIs
+        provision_store.update_provision_status(tenant_id, provision_id, "enabling_apis")
+        api_results = enable_apis(project_id)
+        failed_apis = [a for a in api_results if not a["success"]]
+        if failed_apis:
+            _fail_env_provision(tenant_id, provision_id, project_ref_id, env_name,
+                                f"Failed to enable APIs: {', '.join(a['api'] for a in failed_apis)}")
+            return
+
+        # Create tfstate bucket
+        provision_store.update_provision_status(tenant_id, provision_id, "creating_bucket")
+        bucket_result = create_tf_state_bucket(project_id, region)
+        if "error" in bucket_result:
+            _fail_env_provision(tenant_id, provision_id, project_ref_id, env_name, bucket_result["error"])
+            return
+
+        # Setup Firebase Auth
+        provision_store.update_provision_status(tenant_id, provision_id, "setup_firebase")
+        setup_firebase_auth(project_id)
+
+        # Verify health
+        provision_store.update_provision_status(tenant_id, provision_id, "verifying")
+        verify_project_health(project_id)
+
+        # Update env entry to ready
+        _update_env_provision_status(tenant_id, project_ref_id, env_name, "ready")
+        provision_store.update_provision_status(tenant_id, provision_id, "ready")
+
+    except Exception as e:
+        log.exception("Env provisioning failed for %s/%s", project_id, env_name)
+        _fail_env_provision(tenant_id, provision_id, project_ref_id, env_name, str(e))
+
+
+def _fail_env_provision(tenant_id, provision_id, project_ref_id, env_name, error):
+    """Mark env provisioning as failed in both provision record and project env entry."""
+    provision_store.update_provision_status(tenant_id, provision_id, "failed", error=error)
+    _update_env_provision_status(tenant_id, project_ref_id, env_name, "failed")
+
+
+def _update_env_provision_status(tenant_id, project_ref_id, env_name, status):
+    """Update provision_status on a specific environment entry in the project doc."""
+    project = project_store.get_project(tenant_id, project_ref_id)
+    if not project:
+        return
+    envs = project.get("environments", [])
+    for env in envs:
+        if isinstance(env, dict) and env.get("name") == env_name:
+            env["provision_status"] = status
+            break
+    project_store.update_project_settings(tenant_id, project_ref_id, {"environments": envs})
