@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/auth-store'
 type ProvisionStep = {
   step: string
   success?: boolean
+  created?: boolean
   error?: string
   skipped?: boolean
   timestamp: string
@@ -70,8 +71,8 @@ export default function ProvisioningView({ provisionId }: ProvisioningViewProps)
         <div className="space-y-2">
           {steps.map((step, i) => {
             const label = STEP_LABELS[step.step] || step.step
-            const isSuccess = step.success === true
-            const isError = step.success === false && !step.skipped
+            const isSuccess = step.success === true || step.created === true
+            const isError = (step.success === false || step.created === false) && !step.skipped
             const isSkipped = step.skipped === true
 
             return (
