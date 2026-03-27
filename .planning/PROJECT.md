@@ -42,7 +42,7 @@ Users go from a visual architecture diagram to running, multi-environment GCP in
 - [ ] Database management lifecycle (provisioning + schema management + service discovery/connection)
 - [ ] Multi-environment lifecycle design (creation, divergence, promotion, drift management)
 - [ ] IAM model design (auto-inferred from dependency graph + user overrides)
-- [ ] Resource lifecycle documentation for all 22+ node types
+- [x] Resource lifecycle documentation for all 22+ node types — Validated in Phase 01: resource-node-specifications
 - [ ] Billing pass-through design (Stripe metered billing for GCP cost tracking per tenant)
 - [ ] Platform for future MCP tools and AI agent integration (infra-aware code generation, resource provisioning)
 
@@ -103,4 +103,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-26 after initialization*
+*Last updated: 2026-03-27 after Phase 01 completion*
