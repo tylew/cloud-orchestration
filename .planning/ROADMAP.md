@@ -29,7 +29,7 @@ Ship the platform as an agent-first infrastructure orchestration engine. The MCP
 **Plans:** 6 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — MCP server scaffold + project/blueprint tools (AGT-01, AGT-07)
+- [x] 01-01-PLAN.md — MCP server scaffold + project/blueprint tools (AGT-01, AGT-07)
 - [ ] 01-02-PLAN.md — IAM mappings + auto-provisioning intelligence (AGT-08, AGT-09, AGT-10)
 - [ ] 01-03-PLAN.md — Debug endpoints + insight board scaffold (AGT-12, AGT-11 scaffold)
 - [ ] 01-04-PLAN.md — MCP node CRUD tools with auto-provisioning (AGT-02)

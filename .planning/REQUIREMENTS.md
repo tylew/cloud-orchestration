@@ -7,13 +7,13 @@
 
 ### MCP Server
 
-- [ ] **AGT-01**: MCP server with tools for project lifecycle (list projects, get project state, select environment)
+- [x] **AGT-01**: MCP server with tools for project lifecycle (list projects, get project state, select environment)
 - [ ] **AGT-02**: MCP tools for node CRUD (add node by type, configure node, delete node, list nodes with validation state)
 - [ ] **AGT-03**: MCP tools for secret management (create/update/delete secrets, list secrets with masked values)
 - [ ] **AGT-04**: MCP tools for code file management (read/write/delete files on compute nodes, list files)
 - [ ] **AGT-05**: MCP tools for container builds (trigger build, check build status, get build logs)
 - [ ] **AGT-06**: MCP tools for deploy operations (trigger deploy, check deploy status, get plan/apply output, stream logs)
-- [ ] **AGT-07**: MCP tools for blueprint-level operations (get full blueprint, validate blueprint, generate Terraform preview)
+- [x] **AGT-07**: MCP tools for blueprint-level operations (get full blueprint, validate blueprint, generate Terraform preview)
 
 ### Auto-Provisioning Intelligence
 
@@ -39,13 +39,13 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AGT-01 | Phase 1 | Pending |
+| AGT-01 | Phase 1 | Complete |
 | AGT-02 | Phase 1 | Pending |
 | AGT-03 | Phase 1 | Pending |
 | AGT-04 | Phase 1 | Pending |
 | AGT-05 | Phase 1 | Pending |
 | AGT-06 | Phase 1 | Pending |
-| AGT-07 | Phase 1 | Pending |
+| AGT-07 | Phase 1 | Complete |
 | AGT-08 | Phase 1 | Pending |
 | AGT-09 | Phase 1 | Pending |
 | AGT-10 | Phase 1 | Pending |
