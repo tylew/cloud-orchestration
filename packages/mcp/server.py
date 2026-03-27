@@ -37,7 +37,7 @@ mcp = FastMCP(
 )
 
 # Tool modules register themselves when imported
-from packages.mcp.tools import projects, blueprint  # noqa: E402, F401
+from packages.mcp.tools import projects, blueprint, nodes  # noqa: E402, F401
 
 if __name__ == "__main__":
     mcp.run(transport="stdio")
