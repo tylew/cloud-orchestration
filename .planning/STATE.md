@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-04-PLAN.md
-last_updated: "2026-03-27T06:11:21.617Z"
+stopped_at: Completed 01-06-PLAN.md
+last_updated: "2026-03-27T06:09:00.893Z"
 last_activity: 2026-03-27
 progress:
   total_phases: 2
@@ -60,7 +60,8 @@ Progress: [██░░░░░░░░] 17%
 - [01-03]: Debug endpoints use viewer-level auth via require_project_access for security
 - [01-03]: Terraform debug endpoint compiles on-the-fly for fresh output
 - [01-03]: InsightBoard uses 4 Firestore subscriptions (project, nodes, validation, activity)
-- [Phase 01]: Lazy-load GCP SDK dependencies in MCP node tools via _ensure_deps() pattern for testability
+- [Phase 01]: TerraformPanel fetches on-demand from debug API (not real-time Firestore) since TF is compiled
+- [Phase 01]: DeployPanel log section collapsed by default per D-17 UI-SPEC
 
 ### Blockers/Concerns
 
@@ -69,6 +70,6 @@ Progress: [██░░░░░░░░] 17%
 
 ## Session Continuity
 
-Last session: 2026-03-27T06:11:21.615Z
-Stopped at: Completed 01-04-PLAN.md
+Last session: 2026-03-27T06:09:00.891Z
+Stopped at: Completed 01-06-PLAN.md
 Resume file: None
