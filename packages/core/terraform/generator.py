@@ -111,7 +111,7 @@ def attach_child_resources(nodes: list[BaseNode]) -> None:
 _NODE_TYPE_APIS: dict[str, list[str]] = {
     "cloud_run": ["run.googleapis.com"],
     "cloud_run_job": ["run.googleapis.com"],
-    "cloud_function": ["cloudfunctions.googleapis.com", "cloudbuild.googleapis.com", "eventarc.googleapis.com"],
+    "cloud_function": ["cloudfunctions.googleapis.com", "cloudbuild.googleapis.com", "eventarc.googleapis.com", "artifactregistry.googleapis.com"],
     "cloud_sql": ["sqladmin.googleapis.com"],
     "cloud_sql_database": ["sqladmin.googleapis.com"],
     "firestore": ["firestore.googleapis.com"],
@@ -191,6 +191,29 @@ def _render_api_services(nodes: list) -> str:
         lines.append('  role    = "roles/artifactregistry.writer"')
         lines.append('  member  = "serviceAccount:${data.google_project.current.number}@cloudbuild.gserviceaccount.com"')
         lines.append('  depends_on = [google_project_service.cloudbuild-googleapis-com]')
+        lines.append('}')
+        lines.append('')
+        lines.append('resource "google_project_iam_member" "cf-logging" {')
+        lines.append('  project = var.gcp_project_id')
+        lines.append('  role    = "roles/logging.logWriter"')
+        lines.append('  member  = "serviceAccount:${data.google_project.current.number}@cloudbuild.gserviceaccount.com"')
+        lines.append('  depends_on = [google_project_service.cloudbuild-googleapis-com]')
+        lines.append('}')
+        lines.append('')
+        lines.append('# Default compute SA needs CF developer role for v2 builds')
+        lines.append('resource "google_project_iam_member" "cf-compute-developer" {')
+        lines.append('  project = var.gcp_project_id')
+        lines.append('  role    = "roles/cloudfunctions.developer"')
+        lines.append('  member  = "serviceAccount:${data.google_project.current.number}-compute@developer.gserviceaccount.com"')
+        lines.append('}')
+        lines.append('')
+        lines.append('# AR repo for CF v2 built containers')
+        lines.append('resource "google_artifact_registry_repository" "gcf-artifacts" {')
+        lines.append('  location      = var.gcp_region')
+        lines.append('  repository_id = "gcf-artifacts"')
+        lines.append('  format        = "DOCKER"')
+        lines.append('  project       = var.gcp_project_id')
+        lines.append('  depends_on    = [google_project_service.artifactregistry-googleapis-com]')
         lines.append('}')
         lines.append('')
 
