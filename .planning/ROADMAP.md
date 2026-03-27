@@ -26,10 +26,18 @@ Ship the platform as an agent-first infrastructure orchestration engine. The MCP
   6. Frontend is a read-only dev insight board showing: project state, resource list, validation output, Terraform preview, deploy logs, and activity feed — all via Firestore real-time subscriptions
   7. All operations work against the existing provisioned project (gtPIQyFrVTkEDZEm5gHc) under tyler@pl4m.com
   8. Edge cases handled: validation errors surface to agent, deploy failures are queryable, concurrent operation guards work
-**Plans**: TBD (created during /gsd:plan-phase)
+**Plans:** 6 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — MCP server scaffold + project/blueprint tools (AGT-01, AGT-07)
+- [ ] 01-02-PLAN.md — IAM mappings + auto-provisioning intelligence (AGT-08, AGT-09, AGT-10)
+- [ ] 01-03-PLAN.md — Debug endpoints + insight board scaffold (AGT-12, AGT-11 scaffold)
+- [ ] 01-04-PLAN.md — MCP node CRUD tools with auto-provisioning (AGT-02)
+- [ ] 01-05-PLAN.md — MCP operational tools: secrets, code, builds, deploy (AGT-03-06)
+- [ ] 01-06-PLAN.md — Dev Insight Board panels (AGT-11 complete)
 
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. MCP Server + Agent Workflow + Dev Insight Board | 0/TBD | Not started | - |
+| 1. MCP Server + Agent Workflow + Dev Insight Board | 0/6 | Not started | - |
