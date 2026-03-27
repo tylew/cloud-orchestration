@@ -48,8 +48,31 @@ def submit_terraform_build(
     if tenant_id and project_ref_id:
         tf_prefix = f"{tenant_id}/{project_ref_id}/{env_name}"
 
-    # Write provider.tf into the tf_files if not already present
-    if "provider.tf" not in tf_files:
+    # Override variables.tf with defaults matching the hardcoded provider values
+    tf_files["variables.tf"] = f"""\
+variable "gcp_project_id" {{
+  type    = string
+  default = "{target_project_id}"
+}}
+
+variable "gcp_region" {{
+  type    = string
+  default = "{region}"
+}}
+
+variable "environment" {{
+  type    = string
+  default = "{env_name}"
+}}
+
+variable "tf_state_bucket" {{
+  type    = string
+  default = "{tf_bucket}"
+}}
+"""
+
+    # Write provider.tf into the tf_files (always overwrite with hardcoded values)
+    if True:
         tf_files["provider.tf"] = f"""\
 terraform {{
   required_version = ">= 1.5"
@@ -126,11 +149,6 @@ provider "google" {{
                 ],
             ),
         ],
-        substitutions={
-            "_TF_BUCKET": tf_bucket,
-            "_ENV_NAME": env_name,
-            "_TARGET_PROJECT": target_project_id,
-        },
         service_account=f"projects/{host_project_id}/serviceAccounts/{tf_builder_sa}",
         options=cloudbuild_v1.BuildOptions(
             logging=cloudbuild_v1.BuildOptions.LoggingMode.CLOUD_LOGGING_ONLY,

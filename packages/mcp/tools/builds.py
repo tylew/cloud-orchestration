@@ -126,8 +126,9 @@ def trigger_build(
             return format_error("validation_error", f"Node '{node_slug}' is not a compute node")
 
         # Reconstruct envelope for code generation
+        region = project.get("region", env_entry.get("region", "us-central1"))
         envelope = {
-            "global": {"project_id": project_id, "region": project.get("region", "us-central1"), "environment": env_name},
+            "global": {"project_id": gcp_project_id, "region": region, "environment": env_name},
             "nodes": all_nodes,
         }
 
@@ -136,9 +137,8 @@ def trigger_build(
         if mode not in BUILDABLE_MODES:
             return format_error("validation_error", f"Node '{node_slug}' uses {mode} mode -- no build needed")
 
-        region = project.get("region", env_entry.get("region", "us-central1"))
         node_name = node.get("name", node_slug)
-        image_uri = cloud_build.compute_image_uri(project_id, region, node_name)
+        image_uri = cloud_build.compute_image_uri(gcp_project_id, region, node_name)
         host_project_id = os.environ.get("GCP_PROJECT_ID", "pl4m-host-dev")
 
         # Gather source files
@@ -181,7 +181,7 @@ def trigger_build(
         from packages.api.handlers.builds import _run_container_build
         t = threading.Thread(
             target=_run_container_build,
-            args=(tenant_id, build_record_id, host_project_id, project_id,
+            args=(tenant_id, build_record_id, host_project_id, gcp_project_id,
                   env_name, node_name, source_files, image_uri, project_ref_id),
             daemon=True,
         )
