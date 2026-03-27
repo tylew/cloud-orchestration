@@ -36,7 +36,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. A reviewer can look up any node type and determine exactly what happens on create, update, or delete without ambiguity
 **Plans:** 3 plans
 Plans:
-- [ ] 01-01-PLAN.md -- Lifecycle archetypes + Compute, Security, External category specs
+- [x] 01-01-PLAN.md -- Lifecycle archetypes + Compute, Security, External category specs
 - [ ] 01-02-PLAN.md -- Data category specs (5 parent types + 4 child types)
 - [ ] 01-03-PLAN.md -- Messaging + Network category specs
 
