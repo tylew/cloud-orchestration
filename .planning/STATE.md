@@ -70,6 +70,12 @@ Progress: [██░░░░░░░░] 17%
 - IAM role mappings need validation against current GCP docs
 - Cloud Run Direct VPC Egress GA status needs verification
 
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260327-cll | Fix MCP deploy pipeline end-to-end | 2026-03-27 | see worktree | [260327-cll-fix-mcp-deploy-pipeline](./quick/260327-cll-fix-mcp-deploy-pipeline/) |
+
 ## Session Continuity
 
 Last session: 2026-03-27T06:21:34.633Z
