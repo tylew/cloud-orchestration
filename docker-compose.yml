@@ -11,6 +11,8 @@ services:
     environment:
       - PYTHONDONTWRITEBYTECODE=1
       - GOOGLE_CLOUD_PROJECT=${GCP_PROJECT_ID:-pl4m-host-dev}
+      - DEV_TENANT_ID=${DEV_TENANT_ID:-yBi9vPkZ5HXNw7zyfSr7zltjojC2}
+      - DEV_USER_EMAIL=${DEV_USER_EMAIL:-tyler@pl4m.com}
 
   web:
     image: node:20-slim
