@@ -36,11 +36,11 @@ An agent can go from zero to running multi-environment GCP infrastructure throug
 
 ### Active
 
-- [ ] MCP server exposing platform operations as agent-callable tools
-- [ ] Auto-provisioning: compute node → auto-create service account + wire dependencies
-- [ ] Auto-networking: compute + private data → auto-create VPC/subnet/connector
-- [ ] IAM inference: dependency graph edges → GCP IAM role bindings as Terraform
-- [ ] Dev insight board: read-only Firestore-subscribed dashboard for observability
+- [x] MCP server exposing platform operations as agent-callable tools — Validated in Phase 1 (27 tools)
+- [x] Auto-provisioning: compute node → auto-create service account + wire dependencies — Validated in Phase 1
+- [x] Auto-networking: compute + private data → auto-create VPC/subnet/connector — Validated in Phase 1
+- [x] IAM inference: dependency graph edges → GCP IAM role bindings as Terraform — Validated in Phase 1
+- [x] Dev insight board: read-only Firestore-subscribed dashboard for observability — Validated in Phase 1 (6 panels, pending human visual verification)
 
 ### Out of Scope
 
@@ -81,4 +81,4 @@ An agent can go from zero to running multi-environment GCP infrastructure throug
 This document evolves at phase transitions and milestone boundaries.
 
 ---
-*Last updated: 2026-03-27 after strategic pivot to agent-first engine*
+*Last updated: 2026-03-27 — Phase 1 complete: MCP server (27 tools), auto-provisioning, IAM inference, dev insight board*
