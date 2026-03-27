@@ -48,11 +48,11 @@ Exceptions: none
 | Role | Size | Weight | Line Height |
 |------|------|--------|-------------|
 | Body | 14px | 400 (regular) | 1.5 |
-| Label | 12px | 500 (medium) | 1.4 |
+| Label | 12px | 400 (regular) | 1.4 |
 | Heading | 18px | 600 (semibold) | 1.2 |
 | Display | 24px | 600 (semibold) | 1.2 |
 
-Note: 3 weights declared (400, 500, 600). The Label weight of 500 is used only for panel section labels and status badges to differentiate from body text without going full semibold. Executor may map 500 to `font-medium` in Tailwind.
+2 weights declared: 400 (regular) and 600 (semibold). Labels differentiate from body text through smaller size (12px vs 14px), not through weight.
 
 ---
 
@@ -131,6 +131,10 @@ cd apps/web && npx shadcn@latest add badge card scroll-area separator
 ---
 
 ## Layout Contract
+
+### Primary focal point
+
+The environment selector Tabs in the TopBar is the primary visual anchor. It governs all panel content by switching Firestore subscription paths, making it the single control that determines what every panel displays.
 
 ### Page structure
 
