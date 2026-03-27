@@ -28,7 +28,7 @@ All operations target the existing provisioned project ("My Test Project", ref: 
 ### Auto-Provisioning Behavior
 - **D-06:** Auto-provisioning is eager — triggers on node add. When a compute node is added, its service account is immediately auto-created and wired as a dependency.
 - **D-07:** Auto-provisioned resources appear as regular BaseNode entries with an `auto_provisioned: true` tag. Visually distinct in the insight board.
-- **D-08:** IAM role mappings are registry-integrated — extend ComponentDefinition in registry.py with an `iam_roles` field mapping ActionType to GCP IAM role strings.
+- **D-08:** IAM role mappings live in a standalone `iam_mappings.py` module with a dict mapping (ActionType, NodeType) → GCP IAM role string. Research recommended this over registry extension for auditability and because IAM roles are cross-cutting (not per-component). The registry remains unchanged.
 - **D-09:** The add-node tool response includes a list of auto-created nodes (e.g., "Also created: sa-my-service"). Agent knows immediately what was provisioned.
 - **D-10:** Auto-provisioned nodes can be deleted/modified by the agent, but the tool response warns about potential breakage.
 - **D-11:** Networking auto-provisioning only kicks in when a compute node has a dependency on a private data resource (Cloud SQL, Bigtable). Public resources (Firestore, public APIs) don't trigger VPC/subnet/connector creation.
@@ -102,7 +102,7 @@ All operations target the existing provisioned project ("My Test Project", ref: 
 ## Existing Code Insights
 
 ### Reusable Assets
-- **16 API handler modules** (`packages/api/handlers/`): Complete CRUD for all operations. MCP tools wrap these via HTTP.
+- **16 API handler modules** (`packages/api/handlers/`): Complete CRUD for all operations. MCP tools call underlying store/service functions directly (same process).
 - **Pydantic models** (`packages/core/schemas/`): Envelope, BaseNode, 22 config models. Define the data contracts.
 - **Component registry** (`packages/core/registry.py`): REGISTRY dict maps NodeType → ComponentDefinition. Extend for IAM roles.
 - **BlueprintDAG** (`packages/core/dag.py`): Topological sort, cycle detection. Use for auto-provisioning dependency analysis.
@@ -119,7 +119,7 @@ All operations target the existing provisioned project ("My Test Project", ref: 
 - **Node slug generation**: Deterministic slugs from node type + name. MCP tools use existing slug logic.
 
 ### Integration Points
-- **MCP server → FastAPI API**: HTTP client (httpx) calls to localhost:8080/api/* endpoints
+- **MCP server → platform stores/core**: Direct Python imports (same process, not HTTP)
 - **Insight board → Firestore**: onSnapshot subscriptions to project doc, blueprint nodes, validation, activity
 - **Insight board → SSE endpoint**: EventSource connection for deploy log streaming
 - **Auto-provisioning → Node CRUD**: Extends the node add handler to auto-create supporting nodes
@@ -132,7 +132,7 @@ All operations target the existing provisioned project ("My Test Project", ref: 
 
 - Networking auto-provisioning should respect that many GCP resources (Firestore, public APIs) don't need VPC access. Only private resources (Cloud SQL, Bigtable with private endpoints) trigger networking creation.
 - The insight board serves as a "watch the agent work" experience — both activity feed and resource state are equally important.
-- The MCP server is a thin HTTP client, not a reimplementation of backend logic.
+- The MCP server calls store/service/core functions directly via Python imports — it IS the backend, not a client of it.
 
 </specifics>
 
