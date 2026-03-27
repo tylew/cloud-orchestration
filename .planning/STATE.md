@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-06-PLAN.md
-last_updated: "2026-03-27T06:09:00.893Z"
+stopped_at: Completed 01-05-PLAN.md
+last_updated: "2026-03-27T06:21:34.635Z"
 last_activity: 2026-03-27
 progress:
-  total_phases: 2
+  total_phases: 1
   completed_phases: 1
-  total_plans: 9
-  completed_plans: 7
+  total_plans: 6
+  completed_plans: 6
   percent: 17
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-03-27)
 ## Current Position
 
 Phase: 1
-Plan: 4 of 6 (01-03 complete)
+Plan: 5 of 6 (01-03 complete)
 Status: Ready to execute
 Last activity: 2026-03-27
 
@@ -62,6 +62,8 @@ Progress: [██░░░░░░░░] 17%
 - [01-03]: InsightBoard uses 4 Firestore subscriptions (project, nodes, validation, activity)
 - [Phase 01]: TerraformPanel fetches on-demand from debug API (not real-time Firestore) since TF is compiled
 - [Phase 01]: DeployPanel log section collapsed by default per D-17 UI-SPEC
+- [Phase 01]: Secret tools resolve GCP project ID through env entry pattern (project -> environments[] -> gcp_project_id)
+- [Phase 01]: Deploy uses threading.Thread(daemon=True) for background orchestration outside ASGI context
 
 ### Blockers/Concerns
 
@@ -70,6 +72,6 @@ Progress: [██░░░░░░░░] 17%
 
 ## Session Continuity
 
-Last session: 2026-03-27T06:09:00.891Z
-Stopped at: Completed 01-06-PLAN.md
+Last session: 2026-03-27T06:21:34.633Z
+Stopped at: Completed 01-05-PLAN.md
 Resume file: None

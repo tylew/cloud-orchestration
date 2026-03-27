@@ -33,7 +33,7 @@ Plans:
 - [x] 01-02-PLAN.md — IAM mappings + auto-provisioning intelligence (AGT-08, AGT-09, AGT-10)
 - [x] 01-03-PLAN.md — Debug endpoints + insight board scaffold (AGT-12, AGT-11 scaffold)
 - [x] 01-04-PLAN.md — MCP node CRUD tools with auto-provisioning (AGT-02)
-- [ ] 01-05-PLAN.md — MCP operational tools: secrets, code, builds, deploy (AGT-03-06)
+- [x] 01-05-PLAN.md — MCP operational tools: secrets, code, builds, deploy (AGT-03-06)
 - [x] 01-06-PLAN.md — Dev Insight Board panels (AGT-11 complete)
 
 ## Progress
