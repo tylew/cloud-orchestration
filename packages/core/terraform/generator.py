@@ -132,6 +132,90 @@ _NODE_TYPE_APIS: dict[str, list[str]] = {
 }
 
 
+def _render_iam_bindings(nodes: list) -> str:
+    """Generate IAM role bindings inferred from dependency graph edges (AGT-10).
+
+    For each compute node with a service_account, look at its depends_on targets.
+    Map each (dependency_type) to the required IAM role and generate a
+    google_project_iam_member binding.
+    """
+    from packages.core.iam_mappings import IAM_ROLE_MAP
+    from packages.core.schemas.enums import COMPUTE_TYPES
+
+    # Build node lookup by both name and slug
+    node_lookup = {}
+    for n in nodes:
+        ntype = n.type.value if hasattr(n.type, 'value') else str(n.type)
+        name = n.name if hasattr(n, 'name') else ''
+        slug = n.slug if hasattr(n, 'slug') else ''
+        node_lookup[name] = ntype
+        if slug:
+            node_lookup[slug] = ntype
+
+    compute_types = {t.value for t in COMPUTE_TYPES}
+    lines = [
+        '# Auto-inferred IAM bindings from dependency graph (AGT-10)',
+        '# Managed by the orchestration platform',
+        '',
+    ]
+    bindings_added = set()
+
+    for node in nodes:
+        ntype = node.type.value if hasattr(node.type, 'value') else str(node.type)
+        if ntype not in compute_types:
+            continue
+
+        # Find the service account for this compute node
+        config = node.config if hasattr(node, 'config') else None
+        sa_ref = None
+        if config:
+            sa_val = getattr(config, 'service_account', None) or ''
+            if isinstance(sa_val, str) and sa_val.startswith('node:'):
+                # node:sa-frontend-api.email -> sa-frontend-api
+                sa_name = sa_val.split(':')[1].split('.')[0]
+                sa_ref = f'google_service_account.{sa_name}.email'
+            elif sa_val:
+                sa_ref = f'"{sa_val}"'
+
+        if not sa_ref:
+            continue
+
+        # Check each dependency and infer IAM roles
+        for dep in node.depends_on:
+            dep_type = node_lookup.get(dep)
+            if not dep_type or dep_type in compute_types or dep_type == 'service_account':
+                continue
+
+            # Try Read action first (most common for dependencies)
+            role = IAM_ROLE_MAP.get(("Read", dep_type))
+            if not role:
+                role = IAM_ROLE_MAP.get(("Write", dep_type))
+            if not role:
+                role = IAM_ROLE_MAP.get(("Emit", dep_type))
+            if not role:
+                role = IAM_ROLE_MAP.get(("Enqueue", dep_type))
+            if not role:
+                continue
+
+            binding_key = (node.name, dep, role)
+            if binding_key in bindings_added:
+                continue
+            bindings_added.add(binding_key)
+
+            safe_name = f'{node.name}-{dep}-{role.split("/")[-1]}'.replace('.', '-')
+            lines.append(f'resource "google_project_iam_member" "{safe_name}" {{')
+            lines.append(f'  project = var.gcp_project_id')
+            lines.append(f'  role    = "{role}"')
+            lines.append(f'  member  = "serviceAccount:{sa_ref}"')
+            lines.append(f'}}')
+            lines.append('')
+
+    if len(bindings_added) == 0:
+        return ""
+
+    return "\n".join(lines)
+
+
 def _render_api_services(nodes: list) -> str:
     """Generate google_project_service resources for all APIs required by the blueprint."""
     apis: set[str] = set()
@@ -259,6 +343,11 @@ def generate_terraform(envelope: Envelope) -> dict[str, str]:
 
     # variables.tf
     files["variables.tf"] = _render_variables(env, global_cfg)
+
+    # iam_bindings.tf -- auto-infer IAM roles from dependency graph (AGT-10)
+    iam_block = _render_iam_bindings(sorted_nodes)
+    if iam_block:
+        files["iam_bindings.tf"] = iam_block
 
     # api_services.tf -- auto-enable required GCP APIs based on node types
     api_block = _render_api_services(sorted_nodes)
