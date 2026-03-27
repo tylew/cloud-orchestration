@@ -200,13 +200,21 @@ def _render_api_services(nodes: list) -> str:
         lines.append('  depends_on = [google_project_service.cloudbuild-googleapis-com]')
         lines.append('}')
         lines.append('')
-        lines.append('# Default compute SA needs CF developer role for v2 builds')
-        lines.append('resource "google_project_iam_member" "cf-compute-developer" {')
-        lines.append('  project = var.gcp_project_id')
-        lines.append('  role    = "roles/cloudfunctions.developer"')
-        lines.append('  member  = "serviceAccount:${data.google_project.current.number}-compute@developer.gserviceaccount.com"')
-        lines.append('}')
-        lines.append('')
+        lines.append('# Default compute SA needs broad roles for CF v2 internal builds')
+        for role in [
+            'roles/cloudfunctions.developer',
+            'roles/cloudbuild.builds.editor',
+            'roles/storage.admin',
+            'roles/artifactregistry.admin',
+            'roles/logging.logWriter',
+        ]:
+            safe = role.replace('/', '-').replace('.', '-')
+            lines.append(f'resource "google_project_iam_member" "cf-compute-{safe}" {{')
+            lines.append(f'  project = var.gcp_project_id')
+            lines.append(f'  role    = "{role}"')
+            lines.append(f'  member  = "serviceAccount:${{data.google_project.current.number}}-compute@developer.gserviceaccount.com"')
+            lines.append(f'}}')
+            lines.append('')
         lines.append('# AR repo for CF v2 built containers')
         lines.append('resource "google_artifact_registry_repository" "gcf-artifacts" {')
         lines.append('  location      = var.gcp_region')
