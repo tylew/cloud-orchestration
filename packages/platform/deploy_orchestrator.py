@@ -16,6 +16,87 @@ from packages.platform.store.projects import mark_env_deployed
 
 log = logging.getLogger(__name__)
 
+FUNCTION_TYPES = {"cloud_function"}
+
+
+def _package_function_sources(
+    envelope: dict, project_ref_id: str, env_name: str, host_project_id: str
+) -> dict:
+    """Package Cloud Function source files from GCS into zip archives.
+
+    For each cloud_function node in code_editor mode, reads source files from
+    the code file storage path, creates a zip archive in the CB source bucket,
+    and injects source_bucket/source_object into the node config.
+    """
+    import io
+    import zipfile
+    from datetime import datetime, timezone
+    from google.cloud import storage as gcs
+
+    cb_source_bucket = os.environ.get("CB_SOURCE_BUCKET", f"{host_project_id}-cb-source")
+    nodes = envelope.get("nodes", [])
+
+    for node in nodes:
+        ntype = node.get("type", "")
+        if ntype not in FUNCTION_TYPES:
+            continue
+
+        config = node.get("config", {})
+        mode = config.get("mode", "workflow")
+        node_name = node.get("name", "")
+        node_slug = node.get("slug", node_name)
+
+        # Skip if source already set
+        if config.get("source") and config["source"].get("storage_source"):
+            continue
+        if config.get("source_bucket"):
+            continue
+
+        # Read source files from GCS (same path as write_code_file uses)
+        from packages.platform.gcp.storage import list_files, read_file
+
+        # Try project_ref_id + slug first (MCP path), then project_ref_id + name
+        file_list = list_files(project_ref_id, env_name, node_slug)
+        gcs_id, gcs_node = project_ref_id, node_slug
+        if not file_list:
+            file_list = list_files(project_ref_id, env_name, node_name)
+            gcs_id, gcs_node = project_ref_id, node_name
+
+        if not file_list:
+            log.warning("No source files for function %s — skipping source packaging", node_name)
+            continue
+
+        source_files = {}
+        for f in file_list:
+            content = read_file(gcs_id, env_name, gcs_node, f)
+            if content is not None:
+                source_files[f] = content
+
+        if not source_files:
+            continue
+
+        # Create zip archive in memory
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+            for filename, content in source_files.items():
+                zf.writestr(filename, content)
+        buf.seek(0)
+
+        # Upload to GCS
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+        blob_path = f"{project_ref_id}/functions/{env_name}/{node_slug}/{timestamp}.zip"
+        client = gcs.Client()
+        bucket = client.bucket(cb_source_bucket)
+        blob = bucket.blob(blob_path)
+        blob.upload_from_file(buf, content_type="application/zip")
+        log.info("Packaged function source to gs://%s/%s (%d files)", cb_source_bucket, blob_path, len(source_files))
+
+        # Inject source into node config
+        config["source_bucket"] = cb_source_bucket
+        config["source_object"] = blob_path
+
+    return envelope
+
 
 def _run_deploy(tenant_id: str, deploy_id: str, project_ref_id: str,
                 project_id: str, env_name: str, region: str, tf_bucket: str):
@@ -36,6 +117,9 @@ def _run_deploy(tenant_id: str, deploy_id: str, project_ref_id: str,
         # Step 1.5: Inject built image URIs for workflow-mode compute nodes
         from packages.platform.deploy_service import inject_build_image_uris
         envelope = inject_build_image_uris(tenant_id, project_id, env_name, envelope)
+
+        # Step 1.6: Package Cloud Function source files into GCS
+        envelope = _package_function_sources(envelope, project_ref_id, env_name, host_project_id)
 
         update_deploy_status(tenant_id, deploy_id, "generating",
                              step_result={"step": "generate_tf", "success": True})
