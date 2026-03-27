@@ -37,8 +37,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans:** 3 plans
 Plans:
 - [ ] 01-01-PLAN.md -- Lifecycle archetypes + Compute, Security, External category specs
-- [x] 01-02-PLAN.md -- Data category specs (5 parent types + 4 child types)
-- [ ] 01-03-PLAN.md -- Messaging + Network category specs
+- [ ] 01-02-PLAN.md -- Data category specs (5 parent types + 4 child types)
+- [x] 01-03-PLAN.md -- Messaging + Network category specs
 
 ### Phase 2: Resource Dependency & Convention Rules
 **Goal**: Cross-resource rules are fully specified so that deploy engine, IAM, and networking phases have a complete dependency model to build on
