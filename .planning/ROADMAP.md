@@ -37,7 +37,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans:** 3 plans
 Plans:
 - [ ] 01-01-PLAN.md -- Lifecycle archetypes + Compute, Security, External category specs
-- [ ] 01-02-PLAN.md -- Data category specs (5 parent types + 4 child types)
+- [x] 01-02-PLAN.md -- Data category specs (5 parent types + 4 child types)
 - [ ] 01-03-PLAN.md -- Messaging + Network category specs
 
 ### Phase 2: Resource Dependency & Convention Rules
