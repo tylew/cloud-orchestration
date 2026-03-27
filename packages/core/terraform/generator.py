@@ -143,6 +143,12 @@ def _render_api_services(nodes: list) -> str:
     if not apis:
         return ""
 
+    # Check if cloud_function nodes exist — need to grant CF robot access to source bucket
+    has_functions = any(
+        (n.type.value if hasattr(n.type, 'value') else str(n.type)) in ("cloud_function",)
+        for n in nodes
+    )
+
     lines = [
         '# Auto-enabled GCP APIs based on blueprint resource types',
         '# Managed by the orchestration platform — do not edit manually',
@@ -155,6 +161,37 @@ def _render_api_services(nodes: list) -> str:
         lines.append(f'  service = "{api}"')
         lines.append(f'  disable_on_destroy = false')
         lines.append(f'}}')
+        lines.append('')
+
+    # Grant CF service agents access to source bucket and build permissions
+    if has_functions:
+        lines.append('# Cloud Functions v2 needs project number for service agent emails')
+        lines.append('data "google_project" "current" {')
+        lines.append('  project_id = var.gcp_project_id')
+        lines.append('}')
+        lines.append('')
+        lines.append('# CF admin robot needs read access to source bucket (cross-project)')
+        lines.append('resource "google_storage_bucket_iam_member" "cf-source-reader" {')
+        lines.append('  bucket = var.cb_source_bucket')
+        lines.append('  role   = "roles/storage.objectViewer"')
+        lines.append('  member = "serviceAccount:service-${data.google_project.current.number}@gcf-admin-robot.iam.gserviceaccount.com"')
+        lines.append('  depends_on = [google_project_service.cloudfunctions-googleapis-com]')
+        lines.append('}')
+        lines.append('')
+        lines.append('# CF v2 uses Cloud Build internally — default CB SA needs builder + AR writer roles')
+        lines.append('resource "google_project_iam_member" "cf-cloudbuild-builder" {')
+        lines.append('  project = var.gcp_project_id')
+        lines.append('  role    = "roles/cloudbuild.builds.builder"')
+        lines.append('  member  = "serviceAccount:${data.google_project.current.number}@cloudbuild.gserviceaccount.com"')
+        lines.append('  depends_on = [google_project_service.cloudbuild-googleapis-com]')
+        lines.append('}')
+        lines.append('')
+        lines.append('resource "google_project_iam_member" "cf-ar-writer" {')
+        lines.append('  project = var.gcp_project_id')
+        lines.append('  role    = "roles/artifactregistry.writer"')
+        lines.append('  member  = "serviceAccount:${data.google_project.current.number}@cloudbuild.gserviceaccount.com"')
+        lines.append('  depends_on = [google_project_service.cloudbuild-googleapis-com]')
+        lines.append('}')
         lines.append('')
 
     return "\n".join(lines)

@@ -69,6 +69,11 @@ variable "tf_state_bucket" {{
   type    = string
   default = "{tf_bucket}"
 }}
+
+variable "cb_source_bucket" {{
+  type    = string
+  default = "{cb_source_bucket}"
+}}
 """
 
     # Write provider.tf into the tf_files (always overwrite with hardcoded values)
