@@ -1,169 +1,61 @@
-# Requirements: GCP Orchestration Platform — System Design Specification
+# Requirements: GCP Orchestration Platform — Agent Engine
 
-**Defined:** 2026-03-26
-**Core Value:** Users go from a visual architecture diagram to running, multi-environment GCP infrastructure without needing to understand Terraform, IAM, or GCP internals.
+**Defined:** 2026-03-27
+**Core Value:** An AI agent can provision, configure, and deploy GCP infrastructure through MCP tools without human intervention, while a developer observes in real-time.
 
 ## v1 Requirements
 
-Requirements for this milestone. Each maps to roadmap phases.
+### MCP Server
 
-### Resource Lifecycle
+- [ ] **AGT-01**: MCP server with tools for project lifecycle (list projects, get project state, select environment)
+- [ ] **AGT-02**: MCP tools for node CRUD (add node by type, configure node, delete node, list nodes with validation state)
+- [ ] **AGT-03**: MCP tools for secret management (create/update/delete secrets, list secrets with masked values)
+- [ ] **AGT-04**: MCP tools for code file management (read/write/delete files on compute nodes, list files)
+- [ ] **AGT-05**: MCP tools for container builds (trigger build, check build status, get build logs)
+- [ ] **AGT-06**: MCP tools for deploy operations (trigger deploy, check deploy status, get plan/apply output, stream logs)
+- [ ] **AGT-07**: MCP tools for blueprint-level operations (get full blueprint, validate blueprint, generate Terraform preview)
 
-- [x] **RSLC-01**: Document create/update/delete behavior for all 22+ node types with per-type state machines
-- [x] **RSLC-02**: Identify mutable vs immutable fields per resource type (which changes trigger destroy-recreate)
-- [x] **RSLC-03**: Define default values and validation constraints for every config field per node type
-- [ ] **RSLC-04**: Document Terraform resource mapping for each node type (resource name, required providers, data sources)
-- [ ] **RSLC-05**: Specify inter-resource dependency rules (which types can depend on which, valid edge types)
-- [ ] **RSLC-06**: Define resource naming conventions and slug generation rules per type
-- [ ] **RSLC-07**: Classify each config field as structural (same across envs) vs environmental (varies per env)
+### Auto-Provisioning Intelligence
 
-### Deploy Engine
+- [ ] **AGT-08**: When a compute node is added, auto-create a service_account node and wire it as a dependency
+- [ ] **AGT-09**: When a compute node depends on a private data resource (Cloud SQL, etc.), auto-create VPC/subnet/connector nodes and wire networking
+- [ ] **AGT-10**: IAM role bindings auto-inferred from dependency graph edges (ActionType + target NodeType → GCP IAM role) and generated as Terraform
 
-- [ ] **DPLY-01**: Design layered Terraform state architecture (network, data, IAM, compute, messaging layers per tenant env)
-- [ ] **DPLY-02**: Specify change set computation algorithm (diff blueprint snapshots to determine which layers need apply)
-- [ ] **DPLY-03**: Design concurrent deploy prevention (mutex/locking mechanism per tenant environment)
-- [ ] **DPLY-04**: Document full initial deploy sequence (first deploy of a new environment, all layers)
-- [ ] **DPLY-05**: Document incremental deploy sequence (subsequent deploys, only changed layers)
-- [ ] **DPLY-06**: Design deploy status tracking with per-resource granularity and state machine
-- [ ] **DPLY-07**: Specify Terraform plan output parsing for destroy-recreate warnings (pre-apply safety check)
-- [ ] **DPLY-08**: Design rollback strategy (what can be rolled back, what cannot, recovery procedures)
-- [ ] **DPLY-09**: Design deploy preview flow (show plan output to user before apply)
-- [ ] **DPLY-10**: Specify Cloud Build job configuration per deploy layer (timeouts, machine type, service accounts)
+### Dev Insight Board (Frontend)
 
-### IAM Inference
-
-- [ ] **IAM-01**: Define complete (ActionType, NodeType) -> GCP IAM Role mapping table for all valid edge combinations
-- [ ] **IAM-02**: Specify IAM inference algorithm (how dependency graph edges produce IAM bindings)
-- [ ] **IAM-03**: Design user override mechanism (additive bindings + ability to tighten/restrict inferred roles)
-- [ ] **IAM-04**: Document IAM generation as Terraform using `google_project_iam_member` exclusively (additive, never authoritative)
-- [ ] **IAM-05**: Specify service account creation and assignment strategy per compute node
-- [ ] **IAM-06**: Design cross-project IAM bindings for resources that span environments
-
-### Networking
-
-- [ ] **NET-01**: Design network topology (Shared VPC vs isolated VPC, with research-backed recommendation and rationale)
-- [ ] **NET-02**: Specify CIDR allocation and management strategy (automated, collision-free, Firestore-backed)
-- [ ] **NET-03**: Design VPC Connector auto-wiring for Cloud Run -> private resources (Cloud SQL, Memorystore)
-- [ ] **NET-04**: Specify Private Service Access / Private Service Connect configuration for managed services
-- [ ] **NET-05**: Document network resource Terraform generation (VPC, subnets, connectors, firewall rules)
-- [ ] **NET-06**: Evaluate Cloud Run Direct VPC Egress as alternative to VPC Connectors with recommendation
-
-### Database Lifecycle
-
-- [ ] **DBLC-01**: Design database instance provisioning via Terraform for each database type (Cloud SQL, Firestore, BigQuery, Bigtable)
-- [ ] **DBLC-02**: Design schema management pipeline separation (instance via TF, schema DDL via Cloud Build migration steps)
-- [ ] **DBLC-03**: Specify service discovery mechanism (how compute nodes find and connect to their databases at runtime)
-- [ ] **DBLC-04**: Design connection injection strategy (connection strings, IAM-based auth, Cloud SQL Auth Proxy)
-- [ ] **DBLC-05**: Document per-database-type schema definition format in the blueprint (tables, columns, indexes, types)
-- [ ] **DBLC-06**: Design cross-environment schema promotion workflow (dev schema -> staging -> prod)
-
-### Environment Management
-
-- [ ] **ENVM-01**: Design environment creation workflow (GCP project creation, API enablement, initial provisioning sequence)
-- [ ] **ENVM-02**: Specify blueprint promotion flow with env-specific config overlay mechanism
-- [ ] **ENVM-03**: Design structural vs environmental field classification in component registry
-- [ ] **ENVM-04**: Specify drift detection approach (planned blueprint state vs actual GCP state)
-- [ ] **ENVM-05**: Design environment gating rules (dev must deploy before staging, staging before prod)
-- [ ] **ENVM-06**: Document environment teardown/cleanup procedure (safe resource deletion order)
-
-### Provisioning
-
-- [ ] **PROV-01**: Design rate-limited provisioning queue (not fire-and-forget background tasks) to handle GCP API quotas
-- [ ] **PROV-02**: Specify API enablement sequencing (which APIs must be enabled in which order, with propagation delays)
-- [ ] **PROV-03**: Design provisioning status state machine with error recovery and retry logic
-- [ ] **PROV-04**: Specify GCP folder hierarchy strategy for tenant organization
-- [ ] **PROV-05**: Document IAM propagation delay handling (up to 7 minutes between grant and effective)
-
-## v2 Requirements
-
-Deferred to future milestone. Tracked but not in current roadmap.
-
-### Billing
-
-- **BILL-01**: Design GCP billing export to BigQuery per tenant project
-- **BILL-02**: Design Stripe metered billing pipeline (BigQuery -> Stripe meter events)
-- **BILL-03**: Specify cost attribution per tenant project with 24-48h export lag handling
-- **BILL-04**: Design real-time cost estimation as supplement to lagged billing export
-- **BILL-05**: Design usage dashboards per tenant
-
-### Advanced Features
-
-- **ADVF-01**: Design MCP server interface for programmatic resource provisioning and linking
-- **ADVF-02**: Design AI agent integration with infrastructure-aware code generation
-- **ADVF-03**: Design IAM drift detection and automated remediation
-- **ADVF-04**: Design multi-region networking support
-- **ADVF-05**: Design resource lifecycle hooks (pre-create, post-deploy validation)
+- [ ] **AGT-11**: Read-only dashboard with real-time Firestore subscriptions showing: project state, resource list with types, validation output per node, Terraform compilation output, deploy status/logs, activity feed
+- [ ] **AGT-12**: Debug endpoints exposed: raw project state, full validation output, compiled Terraform files, deploy history, node deploy status with modified flags
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Code implementation | This milestone is design specification only -- no code changes |
-| MCP server implementation | Deferred until platform business logic is implemented |
-| AI agent code generation | Deferred until MCP tools provide ground truth access |
-| Multi-cloud support | GCP only by design constraint |
-| Mobile app | Web-first platform |
-| Self-hosted deployment | Platform runs on GCP, orchestrates GCP |
-| Real-time collaboration design | Already implemented via Firestore listeners |
+| User-facing UX for resource configuration | Agent is the primary user; dev board is observation only |
+| Blueprint promotion UI | Agent handles env management via MCP tools |
+| Drag-and-drop node editor | Replaced by MCP tool-based node management |
+| Collaborator management UI | Not needed for single-agent workflow |
 
 ## Traceability
 
-Which phases cover which requirements. Updated during roadmap creation.
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| RSLC-01 | Phase 1 | Complete |
-| RSLC-02 | Phase 1 | Complete |
-| RSLC-03 | Phase 1 | Complete |
-| RSLC-04 | Phase 2 | Pending |
-| RSLC-05 | Phase 2 | Pending |
-| RSLC-06 | Phase 2 | Pending |
-| RSLC-07 | Phase 2 | Pending |
-| DPLY-01 | Phase 3 | Pending |
-| DPLY-02 | Phase 4 | Pending |
-| DPLY-03 | Phase 4 | Pending |
-| DPLY-04 | Phase 3 | Pending |
-| DPLY-05 | Phase 3 | Pending |
-| DPLY-06 | Phase 4 | Pending |
-| DPLY-07 | Phase 4 | Pending |
-| DPLY-08 | Phase 5 | Pending |
-| DPLY-09 | Phase 5 | Pending |
-| DPLY-10 | Phase 3 | Pending |
-| IAM-01 | Phase 6 | Pending |
-| IAM-02 | Phase 6 | Pending |
-| IAM-03 | Phase 6 | Pending |
-| IAM-04 | Phase 6 | Pending |
-| IAM-05 | Phase 6 | Pending |
-| IAM-06 | Phase 6 | Pending |
-| NET-01 | Phase 7 | Pending |
-| NET-02 | Phase 7 | Pending |
-| NET-03 | Phase 7 | Pending |
-| NET-04 | Phase 7 | Pending |
-| NET-05 | Phase 7 | Pending |
-| NET-06 | Phase 7 | Pending |
-| DBLC-01 | Phase 8 | Pending |
-| DBLC-02 | Phase 8 | Pending |
-| DBLC-03 | Phase 8 | Pending |
-| DBLC-04 | Phase 8 | Pending |
-| DBLC-05 | Phase 8 | Pending |
-| DBLC-06 | Phase 8 | Pending |
-| ENVM-01 | Phase 9 | Pending |
-| ENVM-02 | Phase 9 | Pending |
-| ENVM-03 | Phase 9 | Pending |
-| ENVM-04 | Phase 9 | Pending |
-| ENVM-05 | Phase 9 | Pending |
-| ENVM-06 | Phase 9 | Pending |
-| PROV-01 | Phase 10 | Pending |
-| PROV-02 | Phase 10 | Pending |
-| PROV-03 | Phase 10 | Pending |
-| PROV-04 | Phase 10 | Pending |
-| PROV-05 | Phase 10 | Pending |
+| AGT-01 | Phase 1 | Pending |
+| AGT-02 | Phase 1 | Pending |
+| AGT-03 | Phase 1 | Pending |
+| AGT-04 | Phase 1 | Pending |
+| AGT-05 | Phase 1 | Pending |
+| AGT-06 | Phase 1 | Pending |
+| AGT-07 | Phase 1 | Pending |
+| AGT-08 | Phase 1 | Pending |
+| AGT-09 | Phase 1 | Pending |
+| AGT-10 | Phase 1 | Pending |
+| AGT-11 | Phase 1 | Pending |
+| AGT-12 | Phase 1 | Pending |
 
 **Coverage:**
-- v1 requirements: 45 total
-- Mapped to phases: 45
+- v1 requirements: 12 total
+- Mapped to phases: 12
 - Unmapped: 0
 
 ---
-*Requirements defined: 2026-03-26*
-*Last updated: 2026-03-26 after roadmap creation*
+*Requirements defined: 2026-03-27*
