@@ -21,15 +21,20 @@ def _make_node(slug, name, node_type, config=None, depends_on=None, auto_provisi
     return node
 
 
+# Shared no-op for _ensure_deps since schema modules aren't in this worktree
+_NOOP = "packages.mcp.tools.nodes._ensure_deps"
+
+
 # ── Test 1: add_node for cloud_run returns created node + auto-provisioned SA ──
 
 
-@patch("packages.mcp.tools.nodes.blueprint_store")
+@patch(_NOOP)
+@patch("packages.mcp.tools.nodes.blueprint_store", new_callable=MagicMock)
 @patch("packages.mcp.tools.nodes.auto_provision_for_node")
 @patch("packages.mcp.tools.nodes._run_validation_and_persist")
 @patch("packages.mcp.tools.nodes._generate_slug")
 def test_add_node_cloud_run_returns_auto_provisioned_sa(
-    mock_slug, mock_validate, mock_auto, mock_store
+    mock_slug, mock_validate, mock_auto, mock_store, _noop
 ):
     mock_slug.return_value = "cr-abc123"
     mock_store.get_node.return_value = None
@@ -58,12 +63,13 @@ def test_add_node_cloud_run_returns_auto_provisioned_sa(
 # ── Test 2: add_node for firestore returns no auto-provisioned nodes ──
 
 
-@patch("packages.mcp.tools.nodes.blueprint_store")
+@patch(_NOOP)
+@patch("packages.mcp.tools.nodes.blueprint_store", new_callable=MagicMock)
 @patch("packages.mcp.tools.nodes.auto_provision_for_node")
 @patch("packages.mcp.tools.nodes._run_validation_and_persist")
 @patch("packages.mcp.tools.nodes._generate_slug")
 def test_add_node_firestore_no_auto_provision(
-    mock_slug, mock_validate, mock_auto, mock_store
+    mock_slug, mock_validate, mock_auto, mock_store, _noop
 ):
     mock_slug.return_value = "fs-xyz789"
     mock_store.get_node.return_value = None
@@ -83,12 +89,13 @@ def test_add_node_firestore_no_auto_provision(
 # ── Test 3: add_node response includes auto_created list (D-09) ──
 
 
-@patch("packages.mcp.tools.nodes.blueprint_store")
+@patch(_NOOP)
+@patch("packages.mcp.tools.nodes.blueprint_store", new_callable=MagicMock)
 @patch("packages.mcp.tools.nodes.auto_provision_for_node")
 @patch("packages.mcp.tools.nodes._run_validation_and_persist")
 @patch("packages.mcp.tools.nodes._generate_slug")
 def test_add_node_includes_auto_created_key(
-    mock_slug, mock_validate, mock_auto, mock_store
+    mock_slug, mock_validate, mock_auto, mock_store, _noop
 ):
     mock_slug.return_value = "cr-aaa111"
     mock_store.get_node.return_value = None
@@ -116,9 +123,10 @@ def test_add_node_includes_auto_created_key(
 # ── Test 4: update_node returns updated node data + validation results ──
 
 
-@patch("packages.mcp.tools.nodes.blueprint_store")
+@patch(_NOOP)
+@patch("packages.mcp.tools.nodes.blueprint_store", new_callable=MagicMock)
 @patch("packages.mcp.tools.nodes._run_validation_and_persist")
-def test_update_node_returns_updated_data(mock_validate, mock_store):
+def test_update_node_returns_updated_data(mock_validate, mock_store, _noop):
     existing = _make_node("cr-abc123", "my-api", "cloud_run", config={"image": "old"})
     mock_store.get_node.return_value = existing
     mock_store.save_node.return_value = {}
@@ -137,9 +145,10 @@ def test_update_node_returns_updated_data(mock_validate, mock_store):
 # ── Test 5: delete_node returns list of deleted slugs ──
 
 
-@patch("packages.mcp.tools.nodes.blueprint_store")
+@patch(_NOOP)
+@patch("packages.mcp.tools.nodes.blueprint_store", new_callable=MagicMock)
 @patch("packages.mcp.tools.nodes._run_validation_and_persist")
-def test_delete_node_returns_deleted_slugs(mock_validate, mock_store):
+def test_delete_node_returns_deleted_slugs(mock_validate, mock_store, _noop):
     mock_store.get_node.return_value = _make_node("cr-abc123", "my-api", "cloud_run")
     mock_store.delete_node.return_value = ["cr-abc123", "fc-child1"]
     mock_validate.return_value = {}
@@ -155,8 +164,9 @@ def test_delete_node_returns_deleted_slugs(mock_validate, mock_store):
 # ── Test 6: list_nodes returns nodes with validation state ──
 
 
-@patch("packages.mcp.tools.nodes.blueprint_store")
-def test_list_nodes_returns_with_validation(mock_store):
+@patch(_NOOP)
+@patch("packages.mcp.tools.nodes.blueprint_store", new_callable=MagicMock)
+def test_list_nodes_returns_with_validation(mock_store, _noop):
     mock_store.list_nodes.return_value = [
         _make_node("cr-a1", "api", "cloud_run"),
         _make_node("fs-b2", "db", "firestore"),
@@ -193,9 +203,10 @@ def test_add_node_invalid_type_returns_error():
 # ── Test 8: delete_node with auto_provisioned warning (D-10) ──
 
 
-@patch("packages.mcp.tools.nodes.blueprint_store")
+@patch(_NOOP)
+@patch("packages.mcp.tools.nodes.blueprint_store", new_callable=MagicMock)
 @patch("packages.mcp.tools.nodes._run_validation_and_persist")
-def test_delete_auto_provisioned_node_includes_warning(mock_validate, mock_store):
+def test_delete_auto_provisioned_node_includes_warning(mock_validate, mock_store, _noop):
     auto_node = _make_node("sa-my-api", "sa-my-api", "service_account", auto_provisioned=True)
     mock_store.get_node.return_value = auto_node
     mock_store.delete_node.return_value = ["sa-my-api"]
