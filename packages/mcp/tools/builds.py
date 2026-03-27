@@ -95,9 +95,13 @@ def trigger_build(
         project_id = project.get("project_id", "")
 
         # Check for in-progress builds (D-19 concurrency guard)
-        latest_build = build_store.get_latest_build_for_node(
-            tenant_id, project_id, env_name, node_slug
-        )
+        try:
+            latest_build = build_store.get_latest_build_for_node(
+                tenant_id, project_id, env_name, node_slug
+            )
+        except Exception as guard_err:
+            log.warning("Build concurrency check failed (index may be building): %s", guard_err)
+            latest_build = None
         if latest_build and latest_build.get("status") not in TERMINAL_BUILD_STATUSES and latest_build.get("status") is not None:
             build_id = latest_build.get("id", "unknown")
             return format_error(
@@ -106,14 +110,13 @@ def trigger_build(
                 "Wait for completion or check status with get_build_status.",
             )
 
-        # Resolve node from blueprint
-        blueprint = blueprint_store.get_env_blueprint(tenant_id, project_ref_id, env_name)
-        if not blueprint or not blueprint.get("envelope"):
-            return format_error("not_found", "No blueprint found")
+        # Resolve node from subcollection
+        all_nodes = blueprint_store.list_nodes(tenant_id, project_ref_id, env_name)
+        if not all_nodes:
+            return format_error("not_found", "No nodes found in blueprint")
 
-        envelope = blueprint["envelope"]
         node = None
-        for n in envelope.get("nodes", []):
+        for n in all_nodes:
             if n.get("slug") == node_slug or n.get("name") == node_slug:
                 node = n
                 break
@@ -121,6 +124,12 @@ def trigger_build(
             return format_error("not_found", f"Node '{node_slug}' not found in blueprint")
         if node.get("type") not in COMPUTE_TYPES:
             return format_error("validation_error", f"Node '{node_slug}' is not a compute node")
+
+        # Reconstruct envelope for code generation
+        envelope = {
+            "global": {"project_id": project_id, "region": project.get("region", "us-central1"), "environment": env_name},
+            "nodes": all_nodes,
+        }
 
         config = node.get("config", {})
         mode = config.get("mode", "workflow")
@@ -143,10 +152,18 @@ def trigger_build(
             source_files = generated.files
         else:
             from packages.platform.gcp.storage import list_files, read_file
-            file_list = list_files(project_id, env_name, node_name)
+            # MCP write_code_file stores under project_ref_id + node_slug
+            # Try that path first, fall back to project_id + node_name
+            node_name = node.get("name", node_slug)
+            file_list = list_files(project_ref_id, env_name, node_slug)
+            if not file_list:
+                file_list = list_files(project_id, env_name, node_name)
+                gcs_proj, gcs_node = project_id, node_name
+            else:
+                gcs_proj, gcs_node = project_ref_id, node_slug
             source_files = {}
             for f in file_list:
-                content = read_file(project_id, env_name, node_name, f)
+                content = read_file(gcs_proj, env_name, gcs_node, f)
                 if content is not None:
                     source_files[f] = content
             if not source_files:
