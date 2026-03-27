@@ -35,11 +35,17 @@ def auto_provision_for_node(
         sa_node = _create_sa_node(compute_name)
         created.append(sa_node)
 
-    # Always add SA to depends_on
+    # Always add SA to depends_on and wire into config
     sa_slug = f"sa-{compute_name}"
     if sa_slug not in node_data.get("depends_on", []):
         node_data.setdefault("depends_on", [])
         node_data["depends_on"].append(sa_slug)
+
+    # Set service_account in config if not already set
+    config = node_data.get("config", {})
+    if isinstance(config, dict) and not config.get("service_account"):
+        config["service_account"] = f"node:sa-{compute_name}.email"
+        node_data["config"] = config
 
     # 2. Networking (only if node depends on a private-access type)
     if _needs_private_access(node_data, existing_nodes):
