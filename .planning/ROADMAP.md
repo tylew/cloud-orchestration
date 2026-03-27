@@ -34,7 +34,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Every config field for every node type is classified as mutable (in-place update) or immutable (destroy-recreate)
   3. Every config field has documented default values and validation constraints (type, range, pattern, required/optional)
   4. A reviewer can look up any node type and determine exactly what happens on create, update, or delete without ambiguity
-**Plans**: TBD
+**Plans:** 3 plans
+Plans:
+- [ ] 01-01-PLAN.md -- Lifecycle archetypes + Compute, Security, External category specs
+- [ ] 01-02-PLAN.md -- Data category specs (5 parent types + 4 child types)
+- [ ] 01-03-PLAN.md -- Messaging + Network category specs
 
 ### Phase 2: Resource Dependency & Convention Rules
 **Goal**: Cross-resource rules are fully specified so that deploy engine, IAM, and networking phases have a complete dependency model to build on
@@ -145,7 +149,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Resource Node Specifications | 0/TBD | Not started | - |
+| 1. Resource Node Specifications | 0/3 | Planning complete | - |
 | 2. Resource Dependency & Convention Rules | 0/TBD | Not started | - |
 | 3. Deploy State Architecture & Sequencing | 0/TBD | Not started | - |
 | 4. Deploy Change Detection & Safety | 0/TBD | Not started | - |
