@@ -7,7 +7,7 @@
 ## Phase Boundary
 
 Deliver three interconnected capabilities:
-1. **MCP Server** — A stdio-based MCP tool server that wraps existing backend API endpoints as domain-grouped agent-callable tools, connecting via HTTP client to the running FastAPI backend
+1. **MCP Server** — A stdio-based MCP tool server that wraps existing backend functionality as domain-grouped agent-callable tools, using direct Python imports to call store/service functions (not HTTP self-calls)
 2. **Auto-provisioning intelligence** — Automatic creation of supporting resources (service accounts, VPC/subnet/connector) when compute nodes are added, with IAM role inference from dependency graph edges
 3. **Dev insight board** — A read-only frontend dashboard with real-time Firestore subscriptions showing agent activity and infrastructure state side by side
 
@@ -20,7 +20,7 @@ All operations target the existing provisioned project ("My Test Project", ref: 
 
 ### MCP Tool Design
 - **D-01:** Tools grouped by domain (~15-20 tools), not 1:1 with endpoints. Groups: project, nodes, blueprint, secrets, code, build, deploy, status. Maps to AGT-01 through AGT-07.
-- **D-02:** MCP server connects to the backend via HTTP client (httpx) to the running FastAPI API. Not direct Python imports. Clean separation — MCP server is a thin client.
+- **D-02:** MCP server uses direct Python imports to call store/service/core functions (same process). Research identified HTTP self-calls as an anti-pattern — adds latency, deployment complexity, and circular dependency. The MCP server IS the backend, not a client of it.
 - **D-03:** Errors surfaced using MCP protocol's built-in `isError` flag on tool results, plus structured JSON content with error_type, message, and details.
 - **D-04:** stdio transport first (local dev). Agent runs MCP server as a subprocess. SSE/remote transport deferred.
 - **D-05:** Every tool call includes project_ref_id and env as parameters. Fully stateless — no server-side session.
