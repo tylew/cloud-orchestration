@@ -21,6 +21,7 @@ from packages.api.handlers.dependencies import router as dependencies_router
 from packages.api.handlers.ide import router as ide_router
 from packages.api.handlers.nodes import router as nodes_router
 from packages.api.handlers.promote import router as promote_router
+from packages.api.handlers.debug import router as debug_router
 
 app = FastAPI(title="GCP Orchestration MVP", version="0.1.0")
 
@@ -62,3 +63,4 @@ app.include_router(dependencies_router, prefix="/api", tags=["dependencies"])
 app.include_router(ide_router, prefix="/api", tags=["ide"])
 app.include_router(nodes_router, prefix="/api", tags=["nodes"])
 app.include_router(promote_router, prefix="/api")
+app.include_router(debug_router, prefix="/api")
