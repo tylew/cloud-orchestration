@@ -17,9 +17,9 @@
 
 ### Auto-Provisioning Intelligence
 
-- [ ] **AGT-08**: When a compute node is added, auto-create a service_account node and wire it as a dependency
-- [ ] **AGT-09**: When a compute node depends on a private data resource (Cloud SQL, etc.), auto-create VPC/subnet/connector nodes and wire networking
-- [ ] **AGT-10**: IAM role bindings auto-inferred from dependency graph edges (ActionType + target NodeType → GCP IAM role) and generated as Terraform
+- [x] **AGT-08**: When a compute node is added, auto-create a service_account node and wire it as a dependency
+- [x] **AGT-09**: When a compute node depends on a private data resource (Cloud SQL, etc.), auto-create VPC/subnet/connector nodes and wire networking
+- [x] **AGT-10**: IAM role bindings auto-inferred from dependency graph edges (ActionType + target NodeType → GCP IAM role) and generated as Terraform
 
 ### Dev Insight Board (Frontend)
 
@@ -46,9 +46,9 @@
 | AGT-05 | Phase 1 | Pending |
 | AGT-06 | Phase 1 | Pending |
 | AGT-07 | Phase 1 | Pending |
-| AGT-08 | Phase 1 | Pending |
-| AGT-09 | Phase 1 | Pending |
-| AGT-10 | Phase 1 | Pending |
+| AGT-08 | Phase 1 | Complete |
+| AGT-09 | Phase 1 | Complete |
+| AGT-10 | Phase 1 | Complete |
 | AGT-11 | Phase 1 | Pending |
 | AGT-12 | Phase 1 | Pending |
 
