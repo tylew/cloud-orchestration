@@ -81,13 +81,16 @@ def trigger_deploy(
                 f"Deploy blocked: environment '{env_name}' has no GCP project ID.",
             )
 
-        # Validation gate (D-21)
-        blueprint = blueprint_store.get_env_blueprint(tenant_id, project_ref_id, env_name)
-        if blueprint and blueprint.get("envelope"):
+        # Validation gate (D-21) — reconstruct Envelope from node subcollection
+        node_dicts = blueprint_store.list_nodes(tenant_id, project_ref_id, env_name)
+        if node_dicts:
             from packages.core.schemas.base import Envelope
             from packages.core.validation import validate_blueprint
 
-            env_envelope = Envelope.model_validate(blueprint["envelope"])
+            env_envelope = Envelope.model_validate({
+                "global": {"project_id": "validation", "region": "us-central1", "environment": env_name},
+                "nodes": node_dicts,
+            })
             issues = validate_blueprint(env_envelope)
             error_issues = [i for i in issues if i.severity == "error"]
             if error_issues:
@@ -115,8 +118,18 @@ def trigger_deploy(
                     "Check status with get_deploy_status.",
                 )
 
-        # Create deploy record
+        # Ensure blueprint parent doc exists for deploy orchestrator
         region = env_entry.get("region", "us-central1")
+        if not node_dicts:
+            node_dicts = blueprint_store.list_nodes(tenant_id, project_ref_id, env_name)
+        if not node_dicts:
+            return format_error("deploy_blocked", "No nodes in blueprint. Add nodes before deploying.")
+        blueprint_store.save_env_blueprint(tenant_id, project_ref_id, env_name, {
+            "global": {"project_id": gcp_project_id, "region": region, "environment": env_name},
+            "nodes": node_dicts,
+        })
+
+        # Create deploy record
         tf_bucket = os.environ.get(
             "TF_STATE_BUCKET",
             f"{os.environ.get('GCP_PROJECT_ID', 'pl4m-host-dev')}-tfstate",

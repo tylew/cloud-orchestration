@@ -98,11 +98,14 @@ def validate_blueprint(project_ref_id: str, env_name: str = "dev") -> str:
         from packages.core.validation import validate_blueprint as run_validation
 
         tenant_id = get_tenant_id()
-        bp = blueprint_store.get_env_blueprint(tenant_id, project_ref_id, env_name)
-        if not bp:
+        all_node_dicts = blueprint_store.list_nodes(tenant_id, project_ref_id, env_name)
+        if not all_node_dicts:
             return format_error("not_found", f"No blueprint found for env '{env_name}'")
 
-        envelope = Envelope.model_validate(bp["envelope"])
+        envelope = Envelope.model_validate({
+            "global": {"project_id": "validation", "region": "us-central1", "environment": env_name},
+            "nodes": all_node_dicts,
+        })
         issues = run_validation(envelope)
         issue_dicts = [
             {"severity": i.severity, "node": i.node, "message": i.message}
@@ -132,11 +135,14 @@ def preview_terraform(project_ref_id: str, env_name: str = "dev") -> str:
         from packages.core.terraform.generator import generate_terraform
 
         tenant_id = get_tenant_id()
-        bp = blueprint_store.get_env_blueprint(tenant_id, project_ref_id, env_name)
-        if not bp:
+        all_node_dicts = blueprint_store.list_nodes(tenant_id, project_ref_id, env_name)
+        if not all_node_dicts:
             return format_error("not_found", f"No blueprint found for env '{env_name}'")
 
-        envelope = Envelope.model_validate(bp["envelope"])
+        envelope = Envelope.model_validate({
+            "global": {"project_id": "validation", "region": "us-central1", "environment": env_name},
+            "nodes": all_node_dicts,
+        })
         tf_files = generate_terraform(envelope)
         return _preview_terraform_impl(tf_files)
     except Exception as e:
