@@ -21,6 +21,7 @@ dependencies = [
     "PyJWT>=2.0",
     "cryptography>=3.0",
     "httpx>=0.24",
+    "mcp>=1.26.0",
 ]
 
 [project.optional-dependencies]
