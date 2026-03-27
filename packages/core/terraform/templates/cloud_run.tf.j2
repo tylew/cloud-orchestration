@@ -68,3 +68,13 @@ resource "google_cloud_run_v2_service" "{{ node.name }}" {
     }
   }
 }
+
+{% if config.public is defined and config.public %}
+resource "google_cloud_run_v2_service_iam_member" "{{ node.name }}-public" {
+  project  = var.gcp_project_id
+  location = var.gcp_region
+  name     = google_cloud_run_v2_service.{{ node.name }}.name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}
+{% endif %}

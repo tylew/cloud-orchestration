@@ -177,5 +177,6 @@ class CloudRunConfig(BaseModel):
     traffic: list[CloudRunTraffic] = []
     binary_authorization: CloudRunBinaryAuth | None = None
     custom_audiences: list[str] = []
+    public: bool = False
     eventarc_triggers: list[EventarcTriggerConfig] = []
     workflow: WorkflowDefinition | None = None
