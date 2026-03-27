@@ -9,12 +9,17 @@ from packages.core.iam_mappings import PRIVATE_ACCESS_TYPES
 
 
 def auto_provision_for_node(
-    node_data: dict, existing_nodes: list[dict]
+    node_data: dict, existing_nodes: list[dict], region: str = "us-central1"
 ) -> dict:
     """Auto-provision supporting resources for a node.
 
     Returns {"created": list[dict], "warnings": list[str]}.
     Only compute nodes trigger provisioning; all others return empty.
+
+    Args:
+        node_data: The node being added.
+        existing_nodes: All existing nodes in the blueprint.
+        region: The project's region (from global config or env entry).
     """
     node_type = node_data.get("type", "")
 
@@ -39,13 +44,22 @@ def auto_provision_for_node(
     # 2. Networking (only if node depends on a private-access type)
     if _needs_private_access(node_data, existing_nodes):
         if not _has_existing_networking(existing_nodes):
-            networking_nodes = _create_networking_stack()
+            networking_nodes = _create_networking_stack(region)
             created.extend(networking_nodes)
 
-        # Add connector dependency
+        # Add connector dependency and wire vpc_access on the compute node
         connector_slug = "default-connector"
         if connector_slug not in node_data["depends_on"]:
             node_data["depends_on"].append(connector_slug)
+
+        # Wire vpc_access into the compute node's config
+        config = node_data.get("config", {})
+        if isinstance(config, dict) and "vpc_access" not in config:
+            config["vpc_access"] = {
+                "connector": "node:default-connector.id",
+                "egress": "PRIVATE_RANGES_ONLY",
+            }
+            node_data["config"] = config
 
     return {"created": created, "warnings": warnings}
 
@@ -78,13 +92,19 @@ def _needs_private_access(
 ) -> bool:
     """Check if any dependency requires private network access."""
     depends_on = node_data.get("depends_on", [])
-    node_type_by_name: dict[str, str] = {
-        n["name"]: n["type"] for n in existing_nodes
-    }
-    for dep_name in depends_on:
-        dep_type = node_type_by_name.get(dep_name)
-        if dep_type and NodeType(dep_type) in PRIVATE_ACCESS_TYPES:
-            return True
+    # Build lookup by both name and slug
+    node_type_lookup: dict[str, str] = {}
+    for n in existing_nodes:
+        node_type_lookup[n.get("name", "")] = n.get("type", "")
+        node_type_lookup[n.get("slug", "")] = n.get("type", "")
+    for dep in depends_on:
+        dep_type = node_type_lookup.get(dep)
+        if dep_type:
+            try:
+                if NodeType(dep_type) in PRIVATE_ACCESS_TYPES:
+                    return True
+            except ValueError:
+                pass
     return False
 
 
@@ -94,7 +114,7 @@ def _has_existing_networking(existing_nodes: list[dict]) -> bool:
     return "vpc" in existing_types
 
 
-def _create_networking_stack() -> list[dict]:
+def _create_networking_stack(region: str = "us-central1") -> list[dict]:
     """Create the default VPC + subnet + connector stack."""
     return [
         {
@@ -109,7 +129,11 @@ def _create_networking_stack() -> list[dict]:
             "name": "default-subnet",
             "type": "subnet",
             "slug": "default-subnet",
-            "config": {"ip_cidr_range": "10.8.0.0/28", "region": "us-central1"},
+            "config": {
+                "ip_cidr_range": "10.8.0.0/28",
+                "region": region,
+                "network": "node:default-vpc.id",
+            },
             "depends_on": ["default-vpc"],
             "auto_provisioned": True,
         },
@@ -117,7 +141,11 @@ def _create_networking_stack() -> list[dict]:
             "name": "default-connector",
             "type": "vpc_connector",
             "slug": "default-connector",
-            "config": {"region": "us-central1", "ip_cidr_range": "10.8.0.0/28"},
+            "config": {
+                "region": region,
+                "ip_cidr_range": "10.9.0.0/28",  # Different CIDR from subnet
+                "network": "node:default-vpc.id",
+            },
             "depends_on": ["default-subnet"],
             "auto_provisioned": True,
         },

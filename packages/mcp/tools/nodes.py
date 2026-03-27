@@ -119,7 +119,10 @@ def add_node(
         tenant_id = get_tenant_id()
         slug = _generate_slug(node_type)
 
-        # Build node dict
+        # Build node dict (copy config so auto_provision mutations are detectable)
+        import copy
+        original_config = copy.deepcopy(config) if config else {}
+        original_depends = list(depends_on) if depends_on else []
         node_dict = {
             "slug": slug,
             "name": name,
@@ -138,7 +141,14 @@ def add_node(
 
         # Auto-provision supporting resources
         existing_nodes = blueprint_store.list_nodes(tenant_id, project_ref_id, env_name)
-        provision_result = auto_provision_for_node(node_dict, existing_nodes)
+        # Resolve project region for networking resources
+        try:
+            from packages.platform.store import projects as projects_store
+            project = projects_store.get_project(tenant_id, project_ref_id)
+            region = project.get("region", "us-central1") if project else "us-central1"
+        except Exception:
+            region = "us-central1"
+        provision_result = auto_provision_for_node(node_dict, existing_nodes, region=region)
 
         auto_created = []
         for auto_node in provision_result.get("created", []):
@@ -150,8 +160,8 @@ def add_node(
             )
             auto_created.append(auto_node)
 
-        # Update primary node if depends_on was modified by auto_provision
-        if node_dict.get("depends_on") != (depends_on or []):
+        # Update primary node if depends_on or config was modified by auto_provision
+        if node_dict.get("depends_on") != original_depends or node_dict.get("config") != original_config:
             blueprint_store.save_node(
                 tenant_id, project_ref_id, env_name, slug, node_dict
             )
