@@ -2,6 +2,12 @@ import { useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { useInsightStore } from '@/stores/insight-store'
 import { useAuthStore } from '@/stores/auth-store'
+import { ProjectStatePanel } from '@/components/insight/ProjectStatePanel'
+import { ResourceListPanel } from '@/components/insight/ResourceListPanel'
+import { ValidationPanel } from '@/components/insight/ValidationPanel'
+import { TerraformPanel } from '@/components/insight/TerraformPanel'
+import { DeployPanel } from '@/components/insight/DeployPanel'
+import { ActivityFeed } from '@/components/insight/ActivityFeed'
 
 export default function InsightBoard() {
   const { projectRefId } = useParams<{ projectRefId: string }>()
@@ -58,41 +64,17 @@ export default function InsightBoard() {
         </div>
       </header>
 
-      {/* Two-column grid -- panels added in Plan 06 */}
+      {/* Two-column grid */}
       <main className="grid grid-cols-2 gap-8 p-8 pt-12 min-w-[1024px]">
         <div className="flex flex-col gap-6">
-          <div className="rounded-lg border bg-card p-4 text-card-foreground">
-            <p className="text-sm text-muted-foreground">
-              Project State Panel -- coming in Plan 06
-            </p>
-          </div>
-          <div className="rounded-lg border bg-card p-4 text-card-foreground">
-            <p className="text-sm text-muted-foreground">
-              Resource List Panel -- coming in Plan 06
-            </p>
-          </div>
-          <div className="rounded-lg border bg-card p-4 text-card-foreground">
-            <p className="text-sm text-muted-foreground">
-              Validation Panel -- coming in Plan 06
-            </p>
-          </div>
+          <ProjectStatePanel />
+          <ResourceListPanel />
+          <ValidationPanel />
         </div>
         <div className="flex flex-col gap-6">
-          <div className="rounded-lg border bg-card p-4 text-card-foreground">
-            <p className="text-sm text-muted-foreground">
-              Terraform Panel -- coming in Plan 06
-            </p>
-          </div>
-          <div className="rounded-lg border bg-card p-4 text-card-foreground">
-            <p className="text-sm text-muted-foreground">
-              Deploy Panel -- coming in Plan 06
-            </p>
-          </div>
-          <div className="rounded-lg border bg-card p-4 text-card-foreground">
-            <p className="text-sm text-muted-foreground">
-              Activity Feed -- coming in Plan 06
-            </p>
-          </div>
+          <TerraformPanel projectRefId={projectRefId!} />
+          <DeployPanel projectRefId={projectRefId!} />
+          <ActivityFeed />
         </div>
       </main>
     </div>
