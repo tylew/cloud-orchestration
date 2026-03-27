@@ -23,8 +23,8 @@
 
 ### Dev Insight Board (Frontend)
 
-- [ ] **AGT-11**: Read-only dashboard with real-time Firestore subscriptions showing: project state, resource list with types, validation output per node, Terraform compilation output, deploy status/logs, activity feed
-- [ ] **AGT-12**: Debug endpoints exposed: raw project state, full validation output, compiled Terraform files, deploy history, node deploy status with modified flags
+- [x] **AGT-11**: Read-only dashboard with real-time Firestore subscriptions showing: project state, resource list with types, validation output per node, Terraform compilation output, deploy status/logs, activity feed (scaffold in 01-03, panels in 01-06)
+- [x] **AGT-12**: Debug endpoints exposed: raw project state, full validation output, compiled Terraform files, deploy history, node deploy status with modified flags
 
 ## Out of Scope
 
@@ -49,8 +49,8 @@
 | AGT-08 | Phase 1 | Pending |
 | AGT-09 | Phase 1 | Pending |
 | AGT-10 | Phase 1 | Pending |
-| AGT-11 | Phase 1 | Pending |
-| AGT-12 | Phase 1 | Pending |
+| AGT-11 | Phase 1 | Scaffold complete (01-03), panels pending (01-06) |
+| AGT-12 | Phase 1 | Complete (01-03) |
 
 **Coverage:**
 - v1 requirements: 12 total
