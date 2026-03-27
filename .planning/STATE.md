@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-01-PLAN.md
-last_updated: "2026-03-27T06:01:00Z"
+stopped_at: Completed 01-02-PLAN.md
+last_updated: "2026-03-27T05:56:12Z"
 last_activity: 2026-03-27
 progress:
   total_phases: 1
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-27)
 ## Current Position
 
 Phase: 1
-Plan: 1 of 6 complete
+Plan: 2 of 6 complete
 Status: Executing
 Last activity: 2026-03-27
 
-Progress: [██░░░░░░░░] 17%
+Progress: [█░░░░░░░░░] 17%
 
 ## Key Context
 
@@ -57,9 +57,9 @@ Progress: [██░░░░░░░░] 17%
 - [Pivot]: MCP wraps existing API handlers — don't reimplement, just expose as tools
 - [Pivot]: Auto-provision supporting resources (SA, networking) when compute nodes added
 - [Pivot]: Use existing provisioned project for development/testing
-- [01-01]: Used instructions= for FastMCP constructor (mcp 1.26 API)
-- [01-01]: Pure _impl functions for testable tool logic, lazy store imports
-- [01-01]: Fixed mcp namespace collision via sys.path manipulation
+- [01-02]: IAM_ROLE_MAP uses string tuples (action, type) for O(1) lookup
+- [01-02]: PRIVATE_ACCESS_TYPES limited to Cloud SQL and Bigtable per D-11
+- [01-02]: Networking uses fixed names for dedup (default-vpc, default-subnet, default-connector)
 
 ### Blockers/Concerns
 
@@ -68,6 +68,6 @@ Progress: [██░░░░░░░░] 17%
 
 ## Session Continuity
 
-Last session: 2026-03-27T06:01:00Z
-Stopped at: Completed 01-01-PLAN.md
-Resume file: .planning/phases/01-mcp-server-agent-workflow-dev-insight-board/01-01-SUMMARY.md
+Last session: 2026-03-27T05:56:12Z
+Stopped at: Completed 01-02-PLAN.md
+Resume file: .planning/phases/01-mcp-server-agent-workflow-dev-insight-board/01-02-SUMMARY.md
