@@ -9,9 +9,9 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Resource Lifecycle
 
-- [ ] **RSLC-01**: Document create/update/delete behavior for all 22+ node types with per-type state machines
-- [ ] **RSLC-02**: Identify mutable vs immutable fields per resource type (which changes trigger destroy-recreate)
-- [ ] **RSLC-03**: Define default values and validation constraints for every config field per node type
+- [x] **RSLC-01**: Document create/update/delete behavior for all 22+ node types with per-type state machines
+- [x] **RSLC-02**: Identify mutable vs immutable fields per resource type (which changes trigger destroy-recreate)
+- [x] **RSLC-03**: Define default values and validation constraints for every config field per node type
 - [ ] **RSLC-04**: Document Terraform resource mapping for each node type (resource name, required providers, data sources)
 - [ ] **RSLC-05**: Specify inter-resource dependency rules (which types can depend on which, valid edge types)
 - [ ] **RSLC-06**: Define resource naming conventions and slug generation rules per type
@@ -112,9 +112,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| RSLC-01 | Phase 1 | Pending |
-| RSLC-02 | Phase 1 | Pending |
-| RSLC-03 | Phase 1 | Pending |
+| RSLC-01 | Phase 1 | Complete |
+| RSLC-02 | Phase 1 | Complete |
+| RSLC-03 | Phase 1 | Complete |
 | RSLC-04 | Phase 2 | Pending |
 | RSLC-05 | Phase 2 | Pending |
 | RSLC-06 | Phase 2 | Pending |
