@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-01-PLAN.md
-last_updated: "2026-03-28T20:54:57.136Z"
+stopped_at: Completed 03-02-PLAN.md
+last_updated: "2026-03-28T21:01:47.308Z"
 last_activity: 2026-03-28
 progress:
   total_phases: 3
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 9
-  completed_plans: 8
+  completed_plans: 9
   percent: 17
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-03-27)
 ## Current Position
 
 Phase: 03 (terraform-output-surfacing-and-post-deploy-user-action-guidance) — EXECUTING
-Plan: 1 of 2
-Status: Executing Phase 03
-Last activity: 2026-03-28 -- Phase 03 execution started
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-03-28
 
 Progress: [██░░░░░░░░] 17%
 
@@ -65,6 +65,8 @@ Progress: [██░░░░░░░░] 17%
 - [Phase 01]: Secret tools resolve GCP project ID through env entry pattern (project -> environments[] -> gcp_project_id)
 - [Phase 01]: Deploy uses threading.Thread(daemon=True) for background orchestration outside ASGI context
 - [Phase 03]: Output attribute map uses (node_type, output_name) tuple keys for precise TF reference control
+- [Phase 03]: Outputs stored in two locations: deploy record (historical) and env_outputs/{env} (fast agent lookup)
+- [Phase 03]: GCS results bucket pattern extended with outputs.json alongside plan.txt and apply.txt
 
 ### Roadmap Evolution
 
@@ -84,6 +86,6 @@ Progress: [██░░░░░░░░] 17%
 
 ## Session Continuity
 
-Last session: 2026-03-28T20:54:57.134Z
-Stopped at: Completed 03-01-PLAN.md
+Last session: 2026-03-28T21:01:47.306Z
+Stopped at: Completed 03-02-PLAN.md
 Resume file: None

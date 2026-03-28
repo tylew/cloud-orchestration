@@ -61,4 +61,4 @@ Plans:
 
 Plans:
 - [x] 03-01-PLAN.md — TF output block generation in generator.py with external-facing classification (OUT-01, OUT-02)
-- [ ] 03-02-PLAN.md — Cloud Build step, deploy orchestrator integration, Firestore storage, and MCP tool (OUT-03, OUT-04, OUT-05, OUT-06)
+- [x] 03-02-PLAN.md — Cloud Build step, deploy orchestrator integration, Firestore storage, and MCP tool (OUT-03, OUT-04, OUT-05, OUT-06)
