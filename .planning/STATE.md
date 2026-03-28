@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 3 context gathered
-last_updated: "2026-03-28T20:19:38.061Z"
+stopped_at: Completed 03-01-PLAN.md
+last_updated: "2026-03-28T20:54:57.136Z"
 last_activity: 2026-03-28
 progress:
   total_phases: 3
   completed_phases: 2
-  total_plans: 7
-  completed_plans: 7
+  total_plans: 9
+  completed_plans: 8
   percent: 17
 ---
 
@@ -64,6 +64,7 @@ Progress: [██░░░░░░░░] 17%
 - [Phase 01]: DeployPanel log section collapsed by default per D-17 UI-SPEC
 - [Phase 01]: Secret tools resolve GCP project ID through env entry pattern (project -> environments[] -> gcp_project_id)
 - [Phase 01]: Deploy uses threading.Thread(daemon=True) for background orchestration outside ASGI context
+- [Phase 03]: Output attribute map uses (node_type, output_name) tuple keys for precise TF reference control
 
 ### Roadmap Evolution
 
@@ -83,6 +84,6 @@ Progress: [██░░░░░░░░] 17%
 
 ## Session Continuity
 
-Last session: 2026-03-28T20:19:38.058Z
-Stopped at: Phase 3 context gathered
-Resume file: .planning/phases/03-terraform-output-surfacing-and-post-deploy-user-action-guidance/03-CONTEXT.md
+Last session: 2026-03-28T20:54:57.134Z
+Stopped at: Completed 03-01-PLAN.md
+Resume file: None
