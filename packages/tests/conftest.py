@@ -99,6 +99,28 @@ def cyclic_envelope_data():
 
 
 @pytest.fixture
+def output_test_envelope_data():
+    """Blueprint with mixed external and internal nodes for output testing."""
+    return {
+        "global": _global(),
+        "nodes": [
+            _node("my-vpc", "vpc", {"auto_create_subnetworks": False}),
+            _node("my-sa", "service_account", {"account_id": "my-sa"}),
+            _node("my-db", "cloud_sql", {
+                "database_version": "POSTGRES_15",
+                "tier": "db-f1-micro",
+            }, depends_on=["my-vpc"]),
+            _node("my-service", "cloud_run", {
+                "image": "gcr.io/test/image:latest",
+                "service_account": "my-sa",
+            }, depends_on=["my-sa", "my-db"]),
+            _node("my-bucket", "gcs_bucket", {"location": "US"}),
+            _node("my-topic", "pubsub_topic", {}),
+        ],
+    }
+
+
+@pytest.fixture
 def duplicate_names_envelope_data():
     """Invalid blueprint with duplicate node names."""
     return {
