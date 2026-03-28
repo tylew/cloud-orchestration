@@ -16,7 +16,7 @@ An agent can go from zero to running multi-environment GCP infrastructure throug
 - ✓ Role-based project access control (viewer/editor/admin) -- existing
 - ✓ Multi-tenant isolation via Firebase UID as tenant_id -- existing
 - ✓ Project CRUD with Firestore persistence -- existing
-- ✓ 22 node types with Pydantic config models -- existing
+- ✓ 23 node types with Pydantic config models (including cloud_dns) -- existing + Phase 2
 - ✓ Blueprint save/load with sharded Firestore subcollections -- existing
 - ✓ Individual node CRUD with inline validation -- existing
 - ✓ Cross-node reference validation and dependency graph -- existing
@@ -41,6 +41,8 @@ An agent can go from zero to running multi-environment GCP infrastructure throug
 - [x] Auto-networking: compute + private data → auto-create VPC/subnet/connector — Validated in Phase 1
 - [x] IAM inference: dependency graph edges → GCP IAM role bindings as Terraform — Validated in Phase 1
 - [x] Dev insight board: read-only Firestore-subscribed dashboard for observability — Validated in Phase 1 (6 panels, pending human visual verification)
+- [x] Cloud DNS node type (23rd resource type with full registration) — Validated in Phase 2
+- [x] Terraform output surfacing: generate outputs.tf for external-facing resources, capture via Cloud Build, store in Firestore, expose via MCP tool — Validated in Phase 3
 
 ### Out of Scope
 
@@ -81,4 +83,4 @@ An agent can go from zero to running multi-environment GCP infrastructure throug
 This document evolves at phase transitions and milestone boundaries.
 
 ---
-*Last updated: 2026-03-27 — Phase 1 complete: MCP server (27 tools), auto-provisioning, IAM inference, dev insight board*
+*Last updated: 2026-03-28 — Phase 3 complete: TF output surfacing (outputs.tf generation, CB capture, Firestore storage, MCP tool)*
