@@ -1,0 +1,49 @@
+resource "google_dns_managed_zone" "{{ node.name }}" {
+  name          = "${var.environment}-{{ node.name }}"
+  dns_name      = "{{ config.dns_name if config.dns_name.endswith('.') else config.dns_name ~ '.' }}"
+  description   = "{{ config.description or 'Managed by platform' }}"
+  visibility    = "{{ config.visibility }}"
+  project       = var.gcp_project_id
+  force_destroy = {{ config.force_destroy | lower }}
+
+{% if config.visibility == 'private' and config.networks %}
+  private_visibility_config {
+{% for network in config.networks %}
+    networks {
+      network_url = {{ network }}
+    }
+{% endfor %}
+  }
+{% endif %}
+
+{% if config.dnssec_enabled %}
+  dnssec_config {
+    state = "on"
+  }
+{% endif %}
+
+{% if config.labels %}
+  labels = {
+{% for key, value in config.labels.items() %}
+    "{{ key }}" = "{{ value }}"
+{% endfor %}
+  }
+{% endif %}
+}
+
+{% for record in config.records %}
+resource "google_dns_record_set" "{{ node.name }}_{{ record.name | replace('@', 'apex') | replace('.', '_') }}_{{ record.type | lower }}" {
+  managed_zone = google_dns_managed_zone.{{ node.name }}.name
+  name         = {% if record.name == '@' %}google_dns_managed_zone.{{ node.name }}.dns_name{% else %}"{{ record.name }}.${google_dns_managed_zone.{{ node.name }}.dns_name}"{% endif %}
+
+  type    = "{{ record.type }}"
+  ttl     = {{ record.ttl }}
+  project = var.gcp_project_id
+
+{% if record.target and record.target.startswith('node:') %}
+  rrdatas = [{{ resolve_ref(record.target) }}]
+{% elif record.rrdatas %}
+  rrdatas = {{ record.rrdatas | tojson }}
+{% endif %}
+}
+{% endfor %}
