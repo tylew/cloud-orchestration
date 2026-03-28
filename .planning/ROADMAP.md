@@ -51,3 +51,14 @@ Plans:
 
 Plans:
 - [x] 02-01-PLAN.md — Cloud DNS node type: schema, registration, Terraform template, and tests (DNS-01 through DNS-06)
+
+### Phase 3: Terraform output surfacing and post-deploy user action guidance
+
+**Goal:** Surface structured Terraform output values (URLs, IPs, connection strings) after deploys complete, stored in Firestore and accessible via a dedicated MCP tool. Only external-facing outputs are surfaced. Post-deploy guidance deferred.
+**Requirements**: OUT-01 through OUT-06
+**Depends on:** Phase 2
+**Plans:** 2 plans
+
+Plans:
+- [ ] 03-01-PLAN.md — TF output block generation in generator.py with external-facing classification (OUT-01, OUT-02)
+- [ ] 03-02-PLAN.md — Cloud Build step, deploy orchestrator integration, Firestore storage, and MCP tool (OUT-03, OUT-04, OUT-05, OUT-06)
