@@ -126,6 +126,7 @@ _NODE_TYPE_APIS: dict[str, list[str]] = {
     "subnet": ["compute.googleapis.com"],
     "vpc_connector": ["vpcaccess.googleapis.com", "compute.googleapis.com"],
     "external_lb": ["compute.googleapis.com"],
+    "cloud_dns": ["dns.googleapis.com"],
     "service_account": ["iam.googleapis.com"],
     "secret_manager": ["secretmanager.googleapis.com"],
     "gcs_bucket": ["storage.googleapis.com"],
