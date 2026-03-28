@@ -128,6 +128,42 @@ provider "google" {{
             "terraform apply -auto-approve tfplan -no-color | tee /workspace/apply.txt"
         )
 
+    # Build steps dynamically to support conditional terraform output capture
+    steps = [
+        cloudbuild_v1.BuildStep(
+            name="hashicorp/terraform:1.7.5",
+            entrypoint="sh",
+            args=["-c", tf_command],
+        ),
+    ]
+
+    # Capture terraform output JSON (plan_and_apply mode only) (D-03)
+    if mode != "plan_only":
+        steps.append(
+            cloudbuild_v1.BuildStep(
+                name="hashicorp/terraform:1.7.5",
+                entrypoint="sh",
+                args=["-c", "terraform output -json > /workspace/outputs.json 2>/dev/null || echo '{}' > /workspace/outputs.json"],
+            )
+        )
+
+    # Copy results to GCS (includes outputs.json when available)
+    steps.append(
+        cloudbuild_v1.BuildStep(
+            name="gcr.io/cloud-builders/gsutil",
+            entrypoint="sh",
+            args=[
+                "-c",
+                (
+                    f"gsutil cp /workspace/plan.txt gs://{cb_source_bucket}/results/$BUILD_ID/plan.txt 2>/dev/null; "
+                    f"gsutil cp /workspace/apply.txt gs://{cb_source_bucket}/results/$BUILD_ID/apply.txt 2>/dev/null; "
+                    f"gsutil cp /workspace/outputs.json gs://{cb_source_bucket}/results/$BUILD_ID/outputs.json 2>/dev/null; "
+                    "true"
+                ),
+            ],
+        ),
+    )
+
     build = cloudbuild_v1.Build(
         source=cloudbuild_v1.Source(
             storage_source=cloudbuild_v1.StorageSource(
@@ -135,25 +171,7 @@ provider "google" {{
                 object_=blob_path,
             )
         ),
-        steps=[
-            cloudbuild_v1.BuildStep(
-                name="hashicorp/terraform:1.7.5",
-                entrypoint="sh",
-                args=["-c", tf_command],
-            ),
-            cloudbuild_v1.BuildStep(
-                name="gcr.io/cloud-builders/gsutil",
-                entrypoint="sh",
-                args=[
-                    "-c",
-                    (
-                        f"gsutil cp /workspace/plan.txt gs://{cb_source_bucket}/results/$BUILD_ID/plan.txt 2>/dev/null; "
-                        f"gsutil cp /workspace/apply.txt gs://{cb_source_bucket}/results/$BUILD_ID/apply.txt 2>/dev/null; "
-                        "true"
-                    ),
-                ],
-            ),
-        ],
+        steps=steps,
         service_account=f"projects/{host_project_id}/serviceAccounts/{tf_builder_sa}",
         options=cloudbuild_v1.BuildOptions(
             logging=cloudbuild_v1.BuildOptions.LoggingMode.CLOUD_LOGGING_ONLY,
@@ -217,6 +235,21 @@ def get_build_apply_output(host_project_id: str, build_id: str) -> str | None:
         return blob.download_as_text()
     except Exception:
         log.warning("Could not fetch apply output for build %s", build_id)
+        return None
+
+
+def get_build_terraform_output(host_project_id: str, build_id: str) -> dict | None:
+    """Fetch the terraform output JSON from GCS results bucket (D-03)."""
+    import json
+    cb_source_bucket = os.environ.get("CB_SOURCE_BUCKET", f"{host_project_id}-cb-source")
+    try:
+        client = _get_storage_client()
+        bucket = client.bucket(cb_source_bucket)
+        blob = bucket.blob(f"results/{build_id}/outputs.json")
+        raw = blob.download_as_text()
+        return json.loads(raw)
+    except Exception:
+        log.warning("Could not fetch terraform output for build %s", build_id)
         return None
 
 

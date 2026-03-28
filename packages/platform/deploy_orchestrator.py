@@ -7,6 +7,7 @@ import time
 from packages.platform.gcp.cloud_build import (
     get_build_apply_output,
     get_build_plan_output,
+    get_build_terraform_output,
     get_build_status,
     submit_terraform_build,
 )
@@ -98,6 +99,30 @@ def _package_function_sources(
     return envelope
 
 
+def _parse_terraform_outputs(raw: dict) -> dict:
+    """Parse terraform output -json into structured format for Firestore (D-04).
+
+    Input format: {"output_name": {"sensitive": bool, "type": ..., "value": ...}, ...}
+    Output format: {
+        "outputs": {"output_name": value, ...},
+        "by_node": {"node_name": {"attr": value}, ...}
+    }
+    """
+    flat = {}
+    by_node = {}
+    for key, entry in raw.items():
+        value = entry.get("value") if isinstance(entry, dict) else entry
+        flat[key] = value
+        # Parse node_name from output key: "my-service_endpoint" -> node="my-service", attr="endpoint"
+        parts = key.rsplit("_", 1)
+        if len(parts) == 2:
+            node_name, attr = parts
+            if node_name not in by_node:
+                by_node[node_name] = {}
+            by_node[node_name][attr] = value
+    return {"outputs": flat, "by_node": by_node}
+
+
 def _run_deploy(tenant_id: str, deploy_id: str, project_ref_id: str,
                 project_id: str, env_name: str, region: str, tf_bucket: str):
     """Background task that submits terraform deploy via Cloud Build."""
@@ -172,6 +197,10 @@ def _run_deploy(tenant_id: str, deploy_id: str, project_ref_id: str,
         plan_text = get_build_plan_output(host_project_id, build_id)
         apply_text = get_build_apply_output(host_project_id, build_id)
 
+        # Step 5.5: Fetch terraform outputs from GCS (D-03)
+        tf_outputs_raw = get_build_terraform_output(host_project_id, build_id)
+        tf_outputs = _parse_terraform_outputs(tf_outputs_raw) if tf_outputs_raw else None
+
         if status["status"] == "SUCCESS":
             mark_env_deployed(tenant_id, project_ref_id, env_name)
 
@@ -187,7 +216,16 @@ def _run_deploy(tenant_id: str, deploy_id: str, project_ref_id: str,
                 step_result={"step": "cloud_build", "success": True, "build_status": status["status"]},
                 plan_output=plan_text,
                 apply_output=apply_text,
+                terraform_outputs=tf_outputs,
             )
+
+            # Write latest outputs to env_outputs doc for fast agent lookup (D-04)
+            if tf_outputs:
+                from packages.platform.store.deploys import save_env_outputs
+                try:
+                    save_env_outputs(tenant_id, project_ref_id, env_name, tf_outputs, deploy_id)
+                except Exception as out_err:
+                    log.warning("Failed to save env outputs: %s", out_err)
         else:
             update_deploy_status(
                 tenant_id, deploy_id, "failed",

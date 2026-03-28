@@ -26,7 +26,8 @@ def create_deploy_record(tenant_id: str, project_id: str, env_name: str, config:
 def update_deploy_status(tenant_id: str, deploy_id: str, status: str,
                          step_result: dict | None = None, error: str | None = None,
                          plan_output: str | None = None, apply_output: str | None = None,
-                         build_id: str | None = None, log_url: str | None = None):
+                         build_id: str | None = None, log_url: str | None = None,
+                         terraform_outputs: dict | None = None):
     ref = _tenants_ref(tenant_id).collection("deploys").document(deploy_id)
     now = datetime.now(timezone.utc)
     updates: dict = {"status": status, "updated_at": now}
@@ -40,6 +41,8 @@ def update_deploy_status(tenant_id: str, deploy_id: str, status: str,
         updates["build_id"] = build_id
     if log_url is not None:
         updates["log_url"] = log_url
+    if terraform_outputs is not None:
+        updates["terraform_outputs"] = terraform_outputs
     ref.update(updates)
     if step_result:
         from google.cloud.firestore_v1 import transforms
@@ -113,3 +116,27 @@ def update_node_deploy_version(tenant_id: str, project_ref_id: str, env_name: st
     """Update per-node deploy version in the node_deploy_status document (merge)."""
     ref = _project_ref(tenant_id, project_ref_id).collection("node_deploy_status").document(env_name)
     ref.set({f"nodes.{node_name}": version_data}, merge=True)
+
+
+def save_env_outputs(tenant_id: str, project_ref_id: str, env_name: str,
+                     outputs: dict, deploy_id: str):
+    """Write latest TF outputs to env_outputs/{env} for fast agent lookup (D-04)."""
+    ref = _project_ref(tenant_id, project_ref_id).collection("env_outputs").document(env_name)
+    ref.set({
+        "outputs": outputs.get("outputs", {}),
+        "by_node": outputs.get("by_node", {}),
+        "deploy_id": deploy_id,
+        "captured_at": datetime.now(timezone.utc),
+    })
+
+
+def get_env_outputs(tenant_id: str, project_ref_id: str, env_name: str) -> dict | None:
+    """Read latest TF outputs for an environment (D-05)."""
+    ref = _project_ref(tenant_id, project_ref_id).collection("env_outputs").document(env_name)
+    doc = ref.get()
+    if not doc.exists:
+        return None
+    data = doc.to_dict()
+    if "captured_at" in data and hasattr(data["captured_at"], "isoformat"):
+        data["captured_at"] = data["captured_at"].isoformat()
+    return data
