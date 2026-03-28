@@ -206,7 +206,7 @@ def _render_iam_bindings(nodes: list) -> str:
             lines.append(f'resource "google_project_iam_member" "{safe_name}" {{')
             lines.append(f'  project = var.gcp_project_id')
             lines.append(f'  role    = "{role}"')
-            lines.append(f'  member  = "serviceAccount:{sa_ref}"')
+            lines.append(f'  member  = "serviceAccount:${{{sa_ref}}}"')
             lines.append(f'}}')
             lines.append('')
 
