@@ -47,7 +47,7 @@ Plans:
 **Goal:** Add cloud_dns as the 23rd node type — enum, Pydantic config model, registry entry, Terraform template, validation rules — following the exact registration pattern of existing node types
 **Requirements**: DNS-01 through DNS-06
 **Depends on:** Phase 1
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] 02-01-PLAN.md — Cloud DNS node type: schema, registration, Terraform template, and tests (DNS-01 through DNS-06)
+- [x] 02-01-PLAN.md — Cloud DNS node type: schema, registration, Terraform template, and tests (DNS-01 through DNS-06)

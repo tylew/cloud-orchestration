@@ -30,12 +30,12 @@
 
 ### Cloud DNS
 
-- [ ] **DNS-01**: NodeType enum includes CLOUD_DNS with value "cloud_dns"
-- [ ] **DNS-02**: CloudDnsConfig Pydantic model validates zone configuration (dns_name, visibility, DNSSEC, records, labels)
-- [ ] **DNS-03**: REGISTRY entry with category="Network", terraform_resource="google_dns_managed_zone", default_outputs for name_servers and dns_name
-- [ ] **DNS-04**: Terraform template generates google_dns_managed_zone and google_dns_record_set resources with trailing dot handling
-- [ ] **DNS-05**: Cross-node references in DNS records (e.g., target="node:my-lb.ip_address") resolve via resolve_ref in template
-- [ ] **DNS-06**: Required field validation enforces dns_name on cloud_dns nodes; _NODE_TYPE_APIS maps to dns.googleapis.com
+- [x] **DNS-01**: NodeType enum includes CLOUD_DNS with value "cloud_dns"
+- [x] **DNS-02**: CloudDnsConfig Pydantic model validates zone configuration (dns_name, visibility, DNSSEC, records, labels)
+- [x] **DNS-03**: REGISTRY entry with category="Network", terraform_resource="google_dns_managed_zone", default_outputs for name_servers and dns_name
+- [x] **DNS-04**: Terraform template generates google_dns_managed_zone and google_dns_record_set resources with trailing dot handling
+- [x] **DNS-05**: Cross-node references in DNS records (e.g., target="node:my-lb.ip_address") resolve via resolve_ref in template
+- [x] **DNS-06**: Required field validation enforces dns_name on cloud_dns nodes; _NODE_TYPE_APIS maps to dns.googleapis.com
 
 ## Out of Scope
 
@@ -62,12 +62,12 @@
 | AGT-10 | Phase 1 | Complete |
 | AGT-11 | Phase 1 | Scaffold complete (01-03), panels pending (01-06) |
 | AGT-12 | Phase 1 | Complete (01-03) |
-| DNS-01 | Phase 2 | Pending |
-| DNS-02 | Phase 2 | Pending |
-| DNS-03 | Phase 2 | Pending |
-| DNS-04 | Phase 2 | Pending |
-| DNS-05 | Phase 2 | Pending |
-| DNS-06 | Phase 2 | Pending |
+| DNS-01 | Phase 2 | Complete |
+| DNS-02 | Phase 2 | Complete |
+| DNS-03 | Phase 2 | Complete |
+| DNS-04 | Phase 2 | Complete |
+| DNS-05 | Phase 2 | Complete |
+| DNS-06 | Phase 2 | Complete |
 
 **Coverage:**
 - v1 requirements: 12 total
