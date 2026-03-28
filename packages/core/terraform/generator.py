@@ -43,6 +43,35 @@ def _collect_ttl_collections(collections, prefix=""):
 # Set of child types that are embedded in parent TF templates (not standalone)
 _EMBEDDED_CHILD_TYPES = {"bigquery_table", "cloud_sql_database"}
 
+# Map: (node_type, registry_output_name) -> (tf_attribute, resource_name_suffix)
+# resource_name_suffix is appended to node.name when building the TF resource reference
+# (e.g., external_lb IP resource is named {name}_ip in the template)
+_OUTPUT_ATTR_MAP: dict[tuple[str, str], tuple[str, str]] = {
+    ("cloud_run", "endpoint"): ("uri", ""),
+    ("cloud_run", "service_account_email"): ("template[0].service_account", ""),
+    ("cloud_run_job", "job_name"): ("name", ""),
+    ("cloud_function", "endpoint"): ("service_config[0].uri", ""),
+    ("cloud_sql", "connection_name"): ("connection_name", ""),
+    ("cloud_sql", "private_ip"): ("private_ip_address", ""),
+    ("external_lb", "ip_address"): ("address", "_ip"),
+    ("gcs_bucket", "url"): ("url", ""),
+    ("gcs_bucket", "bucket"): ("name", ""),
+    ("cloud_dns", "name_servers"): ("name_servers", ""),
+    ("cloud_dns", "dns_name"): ("dns_name", ""),
+    ("secret_manager", "secret_id"): ("secret_id", ""),
+    ("secret_manager", "name"): ("name", ""),
+    ("firestore", "database"): ("name", ""),
+    ("bigquery", "dataset"): ("dataset_id", ""),
+    ("bigtable", "instance"): ("name", ""),
+    ("pubsub_topic", "topic"): ("id", ""),
+    ("pubsub_subscription", "subscription"): ("id", ""),
+    ("pubsub_schema", "name"): ("id", ""),
+    ("cloud_task_queue", "queue"): ("id", ""),
+    ("service_account", "email"): ("email", ""),
+}
+
+_INTERNAL_ONLY_TYPES = {"vpc", "subnet", "vpc_connector"}
+
 
 def attach_child_resources(nodes: list[BaseNode]) -> None:
     """Attach flat child resources to parent config for TF template rendering.
@@ -313,6 +342,42 @@ def _render_api_services(nodes: list) -> str:
     return "\n".join(lines)
 
 
+def _render_outputs(nodes: list) -> str:
+    """Generate TF output blocks for external-facing resource attributes (D-01, D-02)."""
+    lines = [
+        '# Auto-generated outputs for external-facing resource attributes',
+        '# Managed by the orchestration platform',
+        '',
+    ]
+    for node in nodes:
+        defn = REGISTRY.get(node.type)
+        if not defn or not defn.terraform_resource:
+            continue
+        ntype = node.type.value if hasattr(node.type, 'value') else str(node.type)
+        if ntype in _INTERNAL_ONLY_TYPES or ntype in _EMBEDDED_CHILD_TYPES:
+            continue
+
+        for out in defn.default_outputs:
+            attr_key = (ntype, out["name"])
+            mapping = _OUTPUT_ATTR_MAP.get(attr_key)
+            if not mapping:
+                continue  # Not mapped = not external-facing
+
+            tf_attr, resource_suffix = mapping
+            output_name = f"{node.name}_{out['name']}"
+            tf_resource_name = f"{node.name}{resource_suffix}"
+            tf_ref = f"{defn.terraform_resource}.{tf_resource_name}.{tf_attr}"
+            lines.append(f'output "{output_name}" {{')
+            lines.append(f'  value       = {tf_ref}')
+            lines.append(f'  description = "{node.name} {out["name"]}"')
+            lines.append(f'}}')
+            lines.append('')
+
+    if len(lines) <= 3:  # only header comment
+        return ""
+    return "\n".join(lines)
+
+
 def generate_terraform(envelope: Envelope) -> dict[str, str]:
     """Generate Terraform HCL files from a validated envelope.
 
@@ -354,6 +419,11 @@ def generate_terraform(envelope: Envelope) -> dict[str, str]:
     api_block = _render_api_services(sorted_nodes)
     if api_block:
         files["api_services.tf"] = api_block
+
+    # outputs.tf -- external-facing TF output values (D-01, D-02)
+    outputs_block = _render_outputs(sorted_nodes)
+    if outputs_block:
+        files["outputs.tf"] = outputs_block
 
     # main.tf -- all resources
     resource_blocks: list[str] = []

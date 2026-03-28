@@ -98,6 +98,7 @@ class TestOutputGeneration:
                 _node("my-conn", "vpc_connector", {
                     "ip_cidr_range": "10.8.0.0/28",
                     "network": "my-vpc",
+                    "region": "us-central1",
                 }, depends_on=["my-vpc"]),
             ],
         }
@@ -197,6 +198,7 @@ class TestOutputClassification:
                 _node("my-conn", "vpc_connector", {
                     "ip_cidr_range": "10.8.0.0/28",
                     "network": "my-vpc",
+                    "region": "us-central1",
                 }, depends_on=["my-vpc"]),
                 _node("my-sa", "service_account", {"account_id": "my-sa"}),
             ],
