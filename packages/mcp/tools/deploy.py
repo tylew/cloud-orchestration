@@ -273,3 +273,35 @@ def list_deploys(
     except Exception as e:
         log.error("list_deploys failed: %s", e)
         return format_error("list_deploys_error", str(e))
+
+
+@mcp.tool()
+def get_deploy_outputs(
+    project_ref_id: str,
+    env_name: str = "dev",
+) -> str:
+    """Get the latest Terraform outputs for a deployed environment.
+
+    Returns structured output values (URLs, IPs, connection strings) from
+    the most recent successful deploy. Use this to discover what resources
+    are running and how to connect to them.
+
+    Args:
+        project_ref_id: The Firestore document ID of the project.
+        env_name: The environment to query (default: "dev").
+    """
+    try:
+        _ensure_deps()
+        tenant_id = get_tenant_id()
+
+        doc = deploy_store.get_env_outputs(tenant_id, project_ref_id, env_name)
+        if not doc:
+            return format_error(
+                "not_found",
+                f"No outputs found for environment '{env_name}'. "
+                "Deploy first, then outputs will be available.",
+            )
+        return format_json_response(doc)
+    except Exception as e:
+        log.error("get_deploy_outputs failed: %s", e)
+        return format_error("get_deploy_outputs_error", str(e))

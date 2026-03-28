@@ -233,3 +233,123 @@ class TestOutputClassification:
         assert "my-db" in content
         # VPC should NOT have outputs
         assert 'output "my-vpc' not in content
+
+
+class TestCloudBuildOutput:
+    """Tests for D-03: Cloud Build terraform output step."""
+
+    def test_get_build_terraform_output_function_exists(self):
+        from packages.platform.gcp.cloud_build import get_build_terraform_output
+        import inspect
+        sig = inspect.signature(get_build_terraform_output)
+        assert "host_project_id" in sig.parameters
+        assert "build_id" in sig.parameters
+
+    def test_submit_terraform_build_has_output_step(self):
+        """Verify the source code includes terraform output -json step."""
+        import inspect
+        from packages.platform.gcp import cloud_build
+        source = inspect.getsource(cloud_build.submit_terraform_build)
+        assert "terraform output -json" in source
+        assert "outputs.json" in source
+
+    def test_output_step_skipped_for_plan_only(self):
+        """Verify plan_only mode guard exists."""
+        import inspect
+        from packages.platform.gcp import cloud_build
+        source = inspect.getsource(cloud_build.submit_terraform_build)
+        assert 'plan_only' in source
+
+
+class TestOutputStorage:
+    """Tests for D-04: Output parsing and Firestore storage."""
+
+    def test_parse_terraform_outputs_flat(self):
+        from packages.platform.deploy_orchestrator import _parse_terraform_outputs
+        raw = {
+            "my-service_endpoint": {"sensitive": False, "type": "string", "value": "https://example.run.app"},
+            "my-db_connection_name": {"sensitive": False, "type": "string", "value": "proj:region:db"},
+        }
+        result = _parse_terraform_outputs(raw)
+        assert result["outputs"]["my-service_endpoint"] == "https://example.run.app"
+        assert result["outputs"]["my-db_connection_name"] == "proj:region:db"
+
+    def test_parse_terraform_outputs_by_node(self):
+        from packages.platform.deploy_orchestrator import _parse_terraform_outputs
+        raw = {
+            "my-service_endpoint": {"sensitive": False, "type": "string", "value": "https://example.run.app"},
+            "my-db_ip": {"sensitive": False, "type": "string", "value": "10.0.0.1"},
+        }
+        result = _parse_terraform_outputs(raw)
+        assert "my-service" in result["by_node"]
+        assert result["by_node"]["my-service"]["endpoint"] == "https://example.run.app"
+        assert "my-db" in result["by_node"]
+        assert result["by_node"]["my-db"]["ip"] == "10.0.0.1"
+
+    def test_parse_terraform_outputs_list_value(self):
+        from packages.platform.deploy_orchestrator import _parse_terraform_outputs
+        raw = {
+            "my-zone_name_servers": {
+                "sensitive": False,
+                "type": ["list", "string"],
+                "value": ["ns1.google.com.", "ns2.google.com."],
+            },
+        }
+        result = _parse_terraform_outputs(raw)
+        assert isinstance(result["outputs"]["my-zone_name_servers"], list)
+        assert len(result["outputs"]["my-zone_name_servers"]) == 2
+
+    def test_parse_terraform_outputs_empty(self):
+        from packages.platform.deploy_orchestrator import _parse_terraform_outputs
+        result = _parse_terraform_outputs({})
+        assert result["outputs"] == {}
+        assert result["by_node"] == {}
+
+    def test_save_env_outputs_function_exists(self):
+        from packages.platform.store.deploys import save_env_outputs
+        import inspect
+        sig = inspect.signature(save_env_outputs)
+        assert "tenant_id" in sig.parameters
+        assert "project_ref_id" in sig.parameters
+        assert "env_name" in sig.parameters
+        assert "outputs" in sig.parameters
+        assert "deploy_id" in sig.parameters
+
+    def test_get_env_outputs_function_exists(self):
+        from packages.platform.store.deploys import get_env_outputs
+        import inspect
+        sig = inspect.signature(get_env_outputs)
+        assert "tenant_id" in sig.parameters
+        assert "project_ref_id" in sig.parameters
+        assert "env_name" in sig.parameters
+
+    def test_update_deploy_status_accepts_terraform_outputs(self):
+        import inspect
+        from packages.platform.store.deploys import update_deploy_status
+        sig = inspect.signature(update_deploy_status)
+        assert "terraform_outputs" in sig.parameters
+
+
+class TestMcpGetOutputs:
+    """Tests for D-05: get_deploy_outputs MCP tool."""
+
+    def test_get_deploy_outputs_tool_exists(self):
+        from packages.mcp.tools.deploy import get_deploy_outputs
+        import inspect
+        sig = inspect.signature(get_deploy_outputs)
+        assert "project_ref_id" in sig.parameters
+        assert "env_name" in sig.parameters
+
+    def test_get_deploy_outputs_default_env(self):
+        from packages.mcp.tools.deploy import get_deploy_outputs
+        import inspect
+        sig = inspect.signature(get_deploy_outputs)
+        assert sig.parameters["env_name"].default == "dev"
+
+    def test_get_deploy_status_unchanged(self):
+        """D-06: get_deploy_status must NOT include terraform_outputs."""
+        import inspect
+        from packages.mcp.tools.deploy import get_deploy_status
+        source = inspect.getsource(get_deploy_status)
+        assert "terraform_outputs" not in source
+        assert "get_env_outputs" not in source
