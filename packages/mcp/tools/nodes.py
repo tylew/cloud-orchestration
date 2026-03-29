@@ -42,6 +42,7 @@ _SLUG_PREFIXES = {
     "external_lb": "lb", "third_party_api": "tp",
     "firestore_collection": "fc", "bigquery_table": "bqt",
     "cloud_sql_database": "sd", "cloud_sql_table": "st",
+    "cloud_dns": "dn",
 }
 
 # Valid node types for add_node

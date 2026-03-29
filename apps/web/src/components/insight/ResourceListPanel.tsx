@@ -30,6 +30,7 @@ const TYPE_LABELS: Record<string, string> = {
   secret_manager: 'Secret Manager',
   service_account: 'Service Account',
   third_party_api: 'Third Party API',
+  cloud_dns: 'Cloud DNS',
 }
 
 type NodeRecord = Record<string, unknown>
