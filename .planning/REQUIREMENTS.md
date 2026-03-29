@@ -44,7 +44,7 @@
 - [x] **OUT-01**: Generate TF output blocks in dedicated outputs.tf wired to registry default_outputs
 - [x] **OUT-02**: Only external-facing outputs surfaced; vpc/subnet/vpc_connector excluded via _INTERNAL_ONLY_TYPES
 - [x] **OUT-03**: Cloud Build step after apply runs terraform output -json; JSON written to GCS results bucket
-- [ ] **OUT-04**: Parsed outputs stored on deploy record (terraform_outputs) and env_outputs/{env} doc with correct by_node grouping
+- [x] **OUT-04**: Parsed outputs stored on deploy record (terraform_outputs) and env_outputs/{env} doc with correct by_node grouping
 - [x] **OUT-05**: New dedicated MCP tool get_deploy_outputs(project_ref_id, env_name) returns env outputs
 - [x] **OUT-06**: Existing get_deploy_status response is NOT modified
 

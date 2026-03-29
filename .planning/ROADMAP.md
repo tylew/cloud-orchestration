@@ -73,7 +73,7 @@ Plans:
 
 Plans:
 - [x] 04-01-PLAN.md — Enable cloud_dns in MCP/REST slug prefixes and insight board TYPE_LABELS (AGT-02, AGT-11)
-- [ ] 04-02-PLAN.md — Fix by_node output parsing for multi-underscore output names (OUT-04)
+- [x] 04-02-PLAN.md — Fix by_node output parsing for multi-underscore output names (OUT-04)
 
 ### Phase 5: End-to-end user acceptance testing suite
 

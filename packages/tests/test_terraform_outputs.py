@@ -305,6 +305,52 @@ class TestOutputStorage:
         assert result["outputs"] == {}
         assert result["by_node"] == {}
 
+    def test_parse_terraform_outputs_by_node_multi_underscore(self):
+        from packages.platform.deploy_orchestrator import _parse_terraform_outputs
+        raw = {
+            "my-zone_name_servers": {
+                "sensitive": False, "type": ["list", "string"],
+                "value": ["ns1.google.com.", "ns2.google.com."],
+            },
+            "my-db_connection_name": {
+                "sensitive": False, "type": "string",
+                "value": "proj:us-central1:my-db",
+            },
+            "my-db_private_ip": {
+                "sensitive": False, "type": "string",
+                "value": "10.0.0.5",
+            },
+        }
+        result = _parse_terraform_outputs(raw, node_names=["my-zone", "my-db"])
+        assert "my-zone" in result["by_node"]
+        assert result["by_node"]["my-zone"]["name_servers"] == ["ns1.google.com.", "ns2.google.com."]
+        assert "my-db" in result["by_node"]
+        assert result["by_node"]["my-db"]["connection_name"] == "proj:us-central1:my-db"
+        assert result["by_node"]["my-db"]["private_ip"] == "10.0.0.5"
+
+    def test_parse_terraform_outputs_by_node_with_node_names(self):
+        from packages.platform.deploy_orchestrator import _parse_terraform_outputs
+        raw = {
+            "my-service_endpoint": {
+                "sensitive": False, "type": "string",
+                "value": "https://example.run.app",
+            },
+        }
+        result = _parse_terraform_outputs(raw, node_names=["my-service"])
+        assert result["by_node"]["my-service"]["endpoint"] == "https://example.run.app"
+
+    def test_parse_terraform_outputs_by_node_fallback_without_node_names(self):
+        from packages.platform.deploy_orchestrator import _parse_terraform_outputs
+        raw = {
+            "my-service_endpoint": {
+                "sensitive": False, "type": "string",
+                "value": "https://example.run.app",
+            },
+        }
+        # Call WITHOUT node_names -- should still work for simple cases via rsplit fallback
+        result = _parse_terraform_outputs(raw)
+        assert result["by_node"]["my-service"]["endpoint"] == "https://example.run.app"
+
     def test_save_env_outputs_function_exists(self):
         from packages.platform.store.deploys import save_env_outputs
         import inspect

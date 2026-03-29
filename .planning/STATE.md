@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-03-29T01:18:52.421Z"
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-03-29T01:19:58.582Z"
 last_activity: 2026-03-28
 progress:
   total_phases: 5
@@ -68,6 +68,7 @@ Progress: [██░░░░░░░░] 17%
 - [Phase 03]: Outputs stored in two locations: deploy record (historical) and env_outputs/{env} (fast agent lookup)
 - [Phase 03]: GCS results bucket pattern extended with outputs.json alongside plan.txt and apply.txt
 - [Phase 04]: Used dn as slug prefix for cloud_dns — follows existing two-letter convention, no collisions
+- [Phase 04]: Longest-first prefix matching for multi-underscore TF output splitting
 
 ### Roadmap Evolution
 
@@ -87,6 +88,6 @@ Progress: [██░░░░░░░░] 17%
 
 ## Session Continuity
 
-Last session: 2026-03-29T01:18:52.418Z
-Stopped at: Completed 04-01-PLAN.md
+Last session: 2026-03-29T01:19:58.579Z
+Stopped at: Completed 04-02-PLAN.md
 Resume file: None

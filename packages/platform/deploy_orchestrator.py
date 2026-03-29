@@ -99,7 +99,7 @@ def _package_function_sources(
     return envelope
 
 
-def _parse_terraform_outputs(raw: dict) -> dict:
+def _parse_terraform_outputs(raw: dict, node_names: list[str] | None = None) -> dict:
     """Parse terraform output -json into structured format for Firestore (D-04).
 
     Input format: {"output_name": {"sensitive": bool, "type": ..., "value": ...}, ...}
@@ -107,19 +107,38 @@ def _parse_terraform_outputs(raw: dict) -> dict:
         "outputs": {"output_name": value, ...},
         "by_node": {"node_name": {"attr": value}, ...}
     }
+
+    When node_names is provided, uses prefix matching against known node names
+    (longest-first) to correctly split multi-underscore output names like
+    "my-zone_name_servers" -> ("my-zone", "name_servers").
+    Falls back to rsplit("_", 1) when node_names is None or no match found.
     """
     flat = {}
     by_node = {}
+    # Sort node names longest-first for greedy prefix matching
+    sorted_names = sorted(node_names or [], key=len, reverse=True)
     for key, entry in raw.items():
         value = entry.get("value") if isinstance(entry, dict) else entry
         flat[key] = value
-        # Parse node_name from output key: "my-service_endpoint" -> node="my-service", attr="endpoint"
-        parts = key.rsplit("_", 1)
-        if len(parts) == 2:
-            node_name, attr = parts
-            if node_name not in by_node:
-                by_node[node_name] = {}
-            by_node[node_name][attr] = value
+        # Try prefix match against known node names
+        matched = False
+        for name in sorted_names:
+            prefix = f"{name}_"
+            if key.startswith(prefix) and len(key) > len(prefix):
+                attr = key[len(prefix):]
+                if name not in by_node:
+                    by_node[name] = {}
+                by_node[name][attr] = value
+                matched = True
+                break
+        # Fallback: rsplit for unknown nodes (backward compat)
+        if not matched:
+            parts = key.rsplit("_", 1)
+            if len(parts) == 2:
+                node_name, attr = parts
+                if node_name not in by_node:
+                    by_node[node_name] = {}
+                by_node[node_name][attr] = value
     return {"outputs": flat, "by_node": by_node}
 
 
@@ -199,7 +218,8 @@ def _run_deploy(tenant_id: str, deploy_id: str, project_ref_id: str,
 
         # Step 5.5: Fetch terraform outputs from GCS (D-03)
         tf_outputs_raw = get_build_terraform_output(host_project_id, build_id)
-        tf_outputs = _parse_terraform_outputs(tf_outputs_raw) if tf_outputs_raw else None
+        node_names = [n.get("name", n.get("slug", "")) for n in envelope.get("nodes", [])]
+        tf_outputs = _parse_terraform_outputs(tf_outputs_raw, node_names=node_names) if tf_outputs_raw else None
 
         if status["status"] == "SUCCESS":
             mark_env_deployed(tenant_id, project_ref_id, env_name)
