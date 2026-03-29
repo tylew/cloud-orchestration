@@ -83,4 +83,4 @@ An agent can go from zero to running multi-environment GCP infrastructure throug
 This document evolves at phase transitions and milestone boundaries.
 
 ---
-*Last updated: 2026-03-28 — Phase 3 complete: TF output surfacing (outputs.tf generation, CB capture, Firestore storage, MCP tool)*
+*Last updated: 2026-03-29 — Phase 4 complete: cross-phase integration fixes (cloud_dns in MCP/REST/frontend, multi-underscore TF output parsing)*
