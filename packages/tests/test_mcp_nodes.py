@@ -217,3 +217,39 @@ def test_delete_auto_provisioned_node_includes_warning(mock_validate, mock_store
     parsed = json.loads(result)
 
     assert any("auto" in w.lower() or "provisioned" in w.lower() for w in parsed.get("warnings", []))
+
+
+# ── Test 9: cloud_dns is in _VALID_NODE_TYPES ──
+
+
+def test_cloud_dns_in_valid_node_types():
+    from packages.mcp.tools.nodes import _VALID_NODE_TYPES
+    assert "cloud_dns" in _VALID_NODE_TYPES
+
+
+# ── Test 10: add_node accepts cloud_dns and slug starts with "dn-" ──
+
+
+@patch(_NOOP)
+@patch("packages.mcp.tools.nodes.blueprint_store", new_callable=MagicMock)
+@patch("packages.mcp.tools.nodes.auto_provision_for_node")
+@patch("packages.mcp.tools.nodes._run_validation_and_persist")
+def test_add_node_cloud_dns_accepted(mock_validate, mock_auto, mock_store, _noop):
+    mock_store.get_node.return_value = None
+    mock_store.save_node.return_value = {}
+    mock_store.list_nodes.return_value = []
+    mock_auto.return_value = {"created": [], "warnings": []}
+    mock_validate.return_value = {}
+
+    from packages.mcp.tools.nodes import add_node
+    result = add_node(
+        project_ref_id="test",
+        env_name="dev",
+        name="my-zone",
+        node_type="cloud_dns",
+        config={"dns_name": "example.com.", "visibility": "public"},
+    )
+    parsed = json.loads(result)
+
+    assert parsed["node"]["type"] == "cloud_dns"
+    assert parsed["node"]["slug"].startswith("dn-")
