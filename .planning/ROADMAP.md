@@ -62,3 +62,19 @@ Plans:
 Plans:
 - [x] 03-01-PLAN.md — TF output block generation in generator.py with external-facing classification (OUT-01, OUT-02)
 - [x] 03-02-PLAN.md — Cloud Build step, deploy orchestrator integration, Firestore storage, and MCP tool (OUT-03, OUT-04, OUT-05, OUT-06)
+
+### Phase 4: Cross-phase integration fixes
+
+**Goal:** Close all cross-phase integration gaps found in v1.0 milestone audit — enable cloud_dns in MCP tools, fix insight board labels, and fix by_node output parsing for multi-underscore output names
+**Requirements**: AGT-02 (gap closure), AGT-11 (gap closure), OUT-04 (gap closure)
+**Depends on:** Phase 3
+**Gap Closure:** Closes gaps from v1.0-MILESTONE-AUDIT.md
+**Plans:** 0 plans (pending /gsd:plan-phase)
+
+### Phase 5: End-to-end user acceptance testing suite
+
+**Goal:** Comprehensive human-driven testing suite covering the full agent workflow — configure resources, deploy infrastructure, modify blueprints, read build/deploy logs, query terraform outputs — plus fix pre-existing issues (list_deploys query mismatch, deployStatus store field) and clean up REQUIREMENTS.md traceability
+**Requirements**: UAT-01 through UAT-04
+**Depends on:** Phase 4
+**Gap Closure:** Closes human verification items from Phase 1 audit + pre-existing issues
+**Plans:** 0 plans (pending /gsd:plan-phase)
