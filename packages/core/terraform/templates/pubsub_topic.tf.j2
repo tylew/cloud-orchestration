@@ -1,0 +1,35 @@
+resource "google_pubsub_topic" "{{ node.name }}" {
+  name                       = "${var.environment}-{{ node.name }}"
+  project                    = var.gcp_project_id
+{% if config.message_retention_duration %}
+  message_retention_duration = "{{ config.message_retention_duration }}"
+{% endif %}
+{% if config.kms_key_name %}
+  kms_key_name               = "{{ config.kms_key_name }}"
+{% endif %}
+
+{% if config.labels %}
+  labels = {
+{% for k, v in config.labels.items() %}
+    {{ k }} = "{{ v }}"
+{% endfor %}
+  }
+{% endif %}
+
+{% if config.schema_settings %}
+  schema_settings {
+    schema   = {% if config.schema_settings.schema_ and config.schema_settings.schema_.startswith('node:') %}{{ resolve_ref(config.schema_settings.schema_) }}{% else %}"{{ config.schema_settings.schema_ }}"{% endif %}
+
+    encoding = "{{ config.schema_settings.encoding }}"
+  }
+{% endif %}
+
+{% if config.message_storage_policy %}
+  message_storage_policy {
+    allowed_persistence_regions = {{ config.message_storage_policy.allowed_persistence_regions | tojson }}
+{% if config.message_storage_policy.enforce_in_transit %}
+    enforce_in_transit          = true
+{% endif %}
+  }
+{% endif %}
+}

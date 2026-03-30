@@ -17,6 +17,28 @@ class DnsRecord(BaseModel):
     target: str | None = None
 
 
+class DnsTargetNameServer(BaseModel):
+    ipv4_address: str | None = None
+    ipv6_address: str | None = None
+    forwarding_path: str | None = None  # default | private
+
+
+class DnsForwardingConfig(BaseModel):
+    target_name_servers: list[DnsTargetNameServer] = []
+
+
+class DnsPeeringTargetNetwork(BaseModel):
+    network_url: str
+
+
+class DnsPeeringConfig(BaseModel):
+    target_network: DnsPeeringTargetNetwork
+
+
+class DnsCloudLoggingConfig(BaseModel):
+    enable_logging: bool = False
+
+
 class CloudDnsConfig(BaseModel):
     """Configuration for a Cloud DNS managed zone."""
     dns_name: str = ""
@@ -27,3 +49,6 @@ class CloudDnsConfig(BaseModel):
     records: list[DnsRecord] = []
     networks: list[str] = []
     labels: dict[str, str] = {}
+    cloud_logging_config: DnsCloudLoggingConfig | None = None
+    forwarding_config: DnsForwardingConfig | None = None
+    peering_config: DnsPeeringConfig | None = None

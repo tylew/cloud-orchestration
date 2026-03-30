@@ -4,11 +4,57 @@ resource "google_cloud_run_v2_service" "{{ node.name }}" {
   project  = var.gcp_project_id
   ingress  = "{{ config.ingress }}"
 
+{% if config.description %}
+  description = "{{ config.description }}"
+{% endif %}
+{% if config.launch_stage %}
+  launch_stage = "{{ config.launch_stage }}"
+{% endif %}
+{% if config.default_uri_disabled %}
+  default_uri_disabled = true
+{% endif %}
+{% if config.invoker_iam_disabled %}
+  invoker_iam_disabled = true
+{% endif %}
+{% if config.iap_enabled %}
+  iap_enabled = true
+{% endif %}
+
 {% if config.labels %}
   labels = {
 {% for k, v in config.labels.items() %}
     {{ k }} = "{{ v }}"
 {% endfor %}
+  }
+{% endif %}
+
+{% if config.annotations %}
+  annotations = {
+{% for k, v in config.annotations.items() %}
+    {{ k }} = "{{ v }}"
+{% endfor %}
+  }
+{% endif %}
+
+{% if config.scaling %}
+  scaling {
+{% if config.scaling.max_instance_count is not none %}
+    max_instance_count = {{ config.scaling.max_instance_count }}
+{% endif %}
+  }
+{% endif %}
+
+{% if config.binary_authorization %}
+  binary_authorization {
+{% if config.binary_authorization.use_default %}
+    use_default = true
+{% endif %}
+{% if config.binary_authorization.breakglass_justification %}
+    breakglass_justification = "{{ config.binary_authorization.breakglass_justification }}"
+{% endif %}
+{% if config.binary_authorization.policy %}
+    policy = "{{ config.binary_authorization.policy }}"
+{% endif %}
   }
 {% endif %}
 
@@ -18,6 +64,15 @@ resource "google_cloud_run_v2_service" "{{ node.name }}" {
     max_instance_request_concurrency = {{ config.max_concurrent_requests }}
     execution_environment            = "{{ config.execution_environment }}"
     session_affinity                 = {{ config.session_affinity | lower }}
+{% if config.encryption_key %}
+    encryption_key                   = "{{ config.encryption_key }}"
+{% endif %}
+{% if config.health_check_disabled %}
+    health_check_disabled            = true
+{% endif %}
+{% if config.gpu_zonal_redundancy_disabled %}
+    gpu_zonal_redundancy_disabled    = true
+{% endif %}
 
     scaling {
       min_instance_count = {{ config.min_instances }}
@@ -29,10 +84,51 @@ resource "google_cloud_run_v2_service" "{{ node.name }}" {
       connector = {{ resolve_ref(config.vpc_access.connector) }}
       egress    = "{{ config.vpc_access.egress }}"
     }
+{% elif config.vpc_access_direct and config.vpc_access_direct.network_interfaces %}
+    vpc_access {
+{% for ni in config.vpc_access_direct.network_interfaces %}
+      network_interfaces {
+{% if ni.network %}
+        network    = "{{ ni.network }}"
+{% endif %}
+{% if ni.subnetwork %}
+        subnetwork = "{{ ni.subnetwork }}"
+{% endif %}
+{% if ni.tags %}
+        tags       = [{{ ni.tags | map('tojson') | join(', ') }}]
+{% endif %}
+      }
+{% endfor %}
+    }
+{% endif %}
+
+{% if config.node_selector %}
+    node_selector {
+      accelerator = "{{ config.node_selector.accelerator }}"
+    }
 {% endif %}
 
     containers {
+{% if config.container_name %}
+      name = "{{ config.container_name }}"
+{% endif %}
       image = {{ resolve_ref(config.image) if config.image.startswith('node:') else '"' ~ config.image ~ '"' }}
+
+{% if config.command %}
+      command = [{{ config.command | map('tojson') | join(', ') }}]
+{% endif %}
+{% if config.args %}
+      args = [{{ config.args | map('tojson') | join(', ') }}]
+{% endif %}
+{% if config.working_dir %}
+      working_dir = "{{ config.working_dir }}"
+{% endif %}
+{% if config.base_image_uri %}
+      base_image_uri = "{{ config.base_image_uri }}"
+{% endif %}
+{% if config.container_depends_on %}
+      depends_on = [{{ config.container_depends_on | map('tojson') | join(', ') }}]
+{% endif %}
 
       ports {
         container_port = {{ config.port }}
@@ -42,6 +138,9 @@ resource "google_cloud_run_v2_service" "{{ node.name }}" {
         limits = {
           cpu    = "{{ config.cpu }}"
           memory = "{{ config.memory }}"
+{% if config.gpu %}
+          "nvidia.com/gpu" = "{{ config.gpu }}"
+{% endif %}
         }
         cpu_idle          = {{ config.cpu_idle | lower }}
         startup_cpu_boost = {{ config.startup_cpu_boost | lower }}
@@ -65,8 +164,188 @@ resource "google_cloud_run_v2_service" "{{ node.name }}" {
         }
       }
 {% endfor %}
+
+{% for vm in config.volume_mounts %}
+      volume_mounts {
+        name       = "{{ vm.name }}"
+        mount_path = "{{ vm.mount_path }}"
+{% if vm.sub_path %}
+        sub_path   = "{{ vm.sub_path }}"
+{% endif %}
+      }
+{% endfor %}
+
+{% if config.liveness_probe %}
+      liveness_probe {
+        initial_delay_seconds = {{ config.liveness_probe.initial_delay_seconds }}
+        timeout_seconds       = {{ config.liveness_probe.timeout_seconds }}
+        period_seconds        = {{ config.liveness_probe.period_seconds }}
+        failure_threshold     = {{ config.liveness_probe.failure_threshold }}
+{% if config.liveness_probe.http_get %}
+        http_get {
+          path = "{{ config.liveness_probe.http_get.path }}"
+{% if config.liveness_probe.http_get.port %}
+          port = {{ config.liveness_probe.http_get.port }}
+{% endif %}
+{% for hdr in config.liveness_probe.http_get.http_headers %}
+          http_headers {
+            name  = "{{ hdr.name }}"
+            value = "{{ hdr.value }}"
+          }
+{% endfor %}
+        }
+{% endif %}
+{% if config.liveness_probe.grpc %}
+        grpc {
+{% if config.liveness_probe.grpc.port %}
+          port = {{ config.liveness_probe.grpc.port }}
+{% endif %}
+{% if config.liveness_probe.grpc.service %}
+          service = "{{ config.liveness_probe.grpc.service }}"
+{% endif %}
+        }
+{% endif %}
+{% if config.liveness_probe.tcp_socket %}
+        tcp_socket {
+          port = {{ config.liveness_probe.tcp_socket.port }}
+        }
+{% endif %}
+      }
+{% endif %}
+
+{% if config.startup_probe %}
+      startup_probe {
+        initial_delay_seconds = {{ config.startup_probe.initial_delay_seconds }}
+        timeout_seconds       = {{ config.startup_probe.timeout_seconds }}
+        period_seconds        = {{ config.startup_probe.period_seconds }}
+        failure_threshold     = {{ config.startup_probe.failure_threshold }}
+{% if config.startup_probe.http_get %}
+        http_get {
+          path = "{{ config.startup_probe.http_get.path }}"
+{% if config.startup_probe.http_get.port %}
+          port = {{ config.startup_probe.http_get.port }}
+{% endif %}
+{% for hdr in config.startup_probe.http_get.http_headers %}
+          http_headers {
+            name  = "{{ hdr.name }}"
+            value = "{{ hdr.value }}"
+          }
+{% endfor %}
+        }
+{% endif %}
+{% if config.startup_probe.grpc %}
+        grpc {
+{% if config.startup_probe.grpc.port %}
+          port = {{ config.startup_probe.grpc.port }}
+{% endif %}
+{% if config.startup_probe.grpc.service %}
+          service = "{{ config.startup_probe.grpc.service }}"
+{% endif %}
+        }
+{% endif %}
+{% if config.startup_probe.tcp_socket %}
+        tcp_socket {
+          port = {{ config.startup_probe.tcp_socket.port }}
+        }
+{% endif %}
+      }
+{% endif %}
+
+{% if config.readiness_probe %}
+      readiness_probe {
+        timeout_seconds   = {{ config.readiness_probe.timeout_seconds }}
+        period_seconds    = {{ config.readiness_probe.period_seconds }}
+        failure_threshold = {{ config.readiness_probe.failure_threshold }}
+        success_threshold = {{ config.readiness_probe.success_threshold }}
+{% if config.readiness_probe.http_get %}
+        http_get {
+          path = "{{ config.readiness_probe.http_get.path }}"
+{% if config.readiness_probe.http_get.port %}
+          port = {{ config.readiness_probe.http_get.port }}
+{% endif %}
+        }
+{% endif %}
+{% if config.readiness_probe.grpc %}
+        grpc {
+{% if config.readiness_probe.grpc.port %}
+          port = {{ config.readiness_probe.grpc.port }}
+{% endif %}
+{% if config.readiness_probe.grpc.service %}
+          service = "{{ config.readiness_probe.grpc.service }}"
+{% endif %}
+        }
+{% endif %}
+      }
+{% endif %}
     }
+
+{% for vol in config.volumes %}
+    volumes {
+      name = "{{ vol.name }}"
+{% if vol.secret %}
+      secret {
+        secret = "{{ vol.secret.secret }}"
+{% if vol.secret.default_mode is not none %}
+        default_mode = {{ vol.secret.default_mode }}
+{% endif %}
+{% for item in vol.secret.items %}
+        items {
+          version = "{{ item.version }}"
+          path    = "{{ item.path }}"
+{% if item.mode is not none %}
+          mode    = {{ item.mode }}
+{% endif %}
+        }
+{% endfor %}
+      }
+{% endif %}
+{% if vol.empty_dir %}
+      empty_dir {
+{% if vol.empty_dir.medium %}
+        medium     = "{{ vol.empty_dir.medium }}"
+{% endif %}
+{% if vol.empty_dir.size_limit %}
+        size_limit = "{{ vol.empty_dir.size_limit }}"
+{% endif %}
+      }
+{% endif %}
+{% if vol.cloud_sql_instance %}
+      cloud_sql_instance {
+        instances = [{{ vol.cloud_sql_instance.instances | map('tojson') | join(', ') }}]
+      }
+{% endif %}
+{% if vol.gcs %}
+      gcs {
+        bucket    = "{{ vol.gcs.bucket }}"
+        read_only = {{ vol.gcs.read_only | lower }}
+{% if vol.gcs.mount_options %}
+        mount_options = [{{ vol.gcs.mount_options | map('tojson') | join(', ') }}]
+{% endif %}
+      }
+{% endif %}
+{% if vol.nfs %}
+      nfs {
+        server    = "{{ vol.nfs.server }}"
+        path      = "{{ vol.nfs.path }}"
+        read_only = {{ vol.nfs.read_only | lower }}
+      }
+{% endif %}
+    }
+{% endfor %}
   }
+
+{% for t in config.traffic %}
+  traffic {
+    type    = "{{ t.type }}"
+    percent = {{ t.percent }}
+{% if t.revision %}
+    revision = "{{ t.revision }}"
+{% endif %}
+{% if t.tag %}
+    tag = "{{ t.tag }}"
+{% endif %}
+  }
+{% endfor %}
 }
 
 {% if config.public is defined and config.public %}

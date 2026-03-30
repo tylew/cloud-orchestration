@@ -1,0 +1,48 @@
+resource "google_firestore_database" "{{ config.database_id | replace('(', '') | replace(')', '') }}" {
+  name                        = "{{ config.database_id }}"
+  location_id                 = "{{ config.location_id }}"
+  type                        = "{{ config.type }}"
+  concurrency_mode            = "{{ config.concurrency_mode }}"
+  project                     = var.gcp_project_id
+
+{% if config.point_in_time_recovery_enablement == 'POINT_IN_TIME_RECOVERY_ENABLED' %}
+  point_in_time_recovery_enablement = "POINT_IN_TIME_RECOVERY_ENABLED"
+{% endif %}
+{% if config.delete_protection_state == 'DELETE_PROTECTION_ENABLED' %}
+  delete_protection_state = "DELETE_PROTECTION_ENABLED"
+{% endif %}
+}
+
+{% for index in config.indexes %}
+resource "google_firestore_index" "{{ config.database_id | replace('(', '') | replace(')', '') }}_{{ index.collection }}_{{ loop.index0 }}" {
+  collection  = "{{ index.collection }}"
+  database    = google_firestore_database.{{ config.database_id | replace('(', '') | replace(')', '') }}.name
+  query_scope = "{{ index.query_scope }}"
+  project     = var.gcp_project_id
+
+{% for field in index.fields %}
+  fields {
+    field_path = "{{ field.field_path }}"
+{% if field.order %}
+    order      = "{{ field.order }}"
+{% endif %}
+{% if field.array_config %}
+    array_config = "{{ field.array_config }}"
+{% endif %}
+  }
+{% endfor %}
+}
+{% endfor %}
+
+{% for coll in collections_with_ttl %}
+resource "google_firestore_field" "{{ config.database_id | replace('(', '') | replace(')', '') }}_{{ coll.path | replace('/', '_') }}_{{ coll.ttl_field }}_ttl" {
+  database   = google_firestore_database.{{ config.database_id | replace('(', '') | replace(')', '') }}.name
+  collection = "{{ coll.collection_name }}"
+  field      = "{{ coll.ttl_field }}"
+  project    = var.gcp_project_id
+
+  ttl_config {}
+
+  index_config {}
+}
+{% endfor %}

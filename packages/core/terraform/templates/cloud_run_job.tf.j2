@@ -3,11 +3,37 @@ resource "google_cloud_run_v2_job" "{{ node.name }}" {
   location = var.gcp_region
   project  = var.gcp_project_id
 
+{% if config.launch_stage %}
+  launch_stage = "{{ config.launch_stage }}"
+{% endif %}
+
 {% if config.labels %}
   labels = {
 {% for k, v in config.labels.items() %}
     {{ k }} = "{{ v }}"
 {% endfor %}
+  }
+{% endif %}
+
+{% if config.annotations %}
+  annotations = {
+{% for k, v in config.annotations.items() %}
+    {{ k }} = "{{ v }}"
+{% endfor %}
+  }
+{% endif %}
+
+{% if config.binary_authorization %}
+  binary_authorization {
+{% if config.binary_authorization.use_default %}
+    use_default = true
+{% endif %}
+{% if config.binary_authorization.breakglass_justification %}
+    breakglass_justification = "{{ config.binary_authorization.breakglass_justification }}"
+{% endif %}
+{% if config.binary_authorization.policy %}
+    policy = "{{ config.binary_authorization.policy }}"
+{% endif %}
   }
 {% endif %}
 
@@ -20,27 +46,67 @@ resource "google_cloud_run_v2_job" "{{ node.name }}" {
       timeout               = "{{ config.timeout }}"
       max_retries           = {{ config.max_retries }}
       execution_environment = "{{ config.execution_environment }}"
+{% if config.encryption_key %}
+      encryption_key        = "{{ config.encryption_key }}"
+{% endif %}
+{% if config.gpu_zonal_redundancy_disabled %}
+      gpu_zonal_redundancy_disabled = true
+{% endif %}
 
 {% if config.vpc_access and config.vpc_access.connector %}
       vpc_access {
         connector = {{ resolve_ref(config.vpc_access.connector) }}
         egress    = "{{ config.vpc_access.egress }}"
       }
+{% elif config.vpc_access_direct and config.vpc_access_direct.network_interfaces %}
+      vpc_access {
+{% for ni in config.vpc_access_direct.network_interfaces %}
+        network_interfaces {
+{% if ni.network %}
+          network    = "{{ ni.network }}"
+{% endif %}
+{% if ni.subnetwork %}
+          subnetwork = "{{ ni.subnetwork }}"
+{% endif %}
+{% if ni.tags %}
+          tags       = [{{ ni.tags | map('tojson') | join(', ') }}]
+{% endif %}
+        }
+{% endfor %}
+      }
+{% endif %}
+
+{% if config.node_selector %}
+      node_selector {
+        accelerator = "{{ config.node_selector.accelerator }}"
+      }
 {% endif %}
 
       containers {
+{% if config.container_name %}
+        name = "{{ config.container_name }}"
+{% endif %}
         image = {{ resolve_ref(config.image) if config.image.startswith('node:') else '"' ~ config.image ~ '"' }}
 {% if config.command %}
-        command = {{ config.command | tojson }}
+        command = [{{ config.command | map('tojson') | join(', ') }}]
 {% endif %}
 {% if config.args %}
-        args = {{ config.args | tojson }}
+        args = [{{ config.args | map('tojson') | join(', ') }}]
+{% endif %}
+{% if config.working_dir %}
+        working_dir = "{{ config.working_dir }}"
+{% endif %}
+{% if config.container_depends_on %}
+        depends_on = [{{ config.container_depends_on | map('tojson') | join(', ') }}]
 {% endif %}
 
         resources {
           limits = {
             cpu    = "{{ config.cpu }}"
             memory = "{{ config.memory }}"
+{% if config.gpu %}
+            "nvidia.com/gpu" = "{{ config.gpu }}"
+{% endif %}
           }
         }
 
@@ -62,7 +128,103 @@ resource "google_cloud_run_v2_job" "{{ node.name }}" {
           }
         }
 {% endfor %}
+
+{% for vm in config.volume_mounts %}
+        volume_mounts {
+          name       = "{{ vm.name }}"
+          mount_path = "{{ vm.mount_path }}"
+{% if vm.sub_path %}
+          sub_path   = "{{ vm.sub_path }}"
+{% endif %}
+        }
+{% endfor %}
+
+{% if config.startup_probe %}
+        startup_probe {
+          initial_delay_seconds = {{ config.startup_probe.initial_delay_seconds }}
+          timeout_seconds       = {{ config.startup_probe.timeout_seconds }}
+          period_seconds        = {{ config.startup_probe.period_seconds }}
+          failure_threshold     = {{ config.startup_probe.failure_threshold }}
+{% if config.startup_probe.http_get %}
+          http_get {
+            path = "{{ config.startup_probe.http_get.path }}"
+{% if config.startup_probe.http_get.port %}
+            port = {{ config.startup_probe.http_get.port }}
+{% endif %}
+          }
+{% endif %}
+{% if config.startup_probe.grpc %}
+          grpc {
+{% if config.startup_probe.grpc.port %}
+            port = {{ config.startup_probe.grpc.port }}
+{% endif %}
+{% if config.startup_probe.grpc.service %}
+            service = "{{ config.startup_probe.grpc.service }}"
+{% endif %}
+          }
+{% endif %}
+{% if config.startup_probe.tcp_socket %}
+          tcp_socket {
+            port = {{ config.startup_probe.tcp_socket.port }}
+          }
+{% endif %}
+        }
+{% endif %}
       }
+
+{% for vol in config.volumes %}
+      volumes {
+        name = "{{ vol.name }}"
+{% if vol.secret %}
+        secret {
+          secret = "{{ vol.secret.secret }}"
+{% if vol.secret.default_mode is not none %}
+          default_mode = {{ vol.secret.default_mode }}
+{% endif %}
+{% for item in vol.secret.items %}
+          items {
+            version = "{{ item.version }}"
+            path    = "{{ item.path }}"
+{% if item.mode is not none %}
+            mode    = {{ item.mode }}
+{% endif %}
+          }
+{% endfor %}
+        }
+{% endif %}
+{% if vol.empty_dir %}
+        empty_dir {
+{% if vol.empty_dir.medium %}
+          medium     = "{{ vol.empty_dir.medium }}"
+{% endif %}
+{% if vol.empty_dir.size_limit %}
+          size_limit = "{{ vol.empty_dir.size_limit }}"
+{% endif %}
+        }
+{% endif %}
+{% if vol.cloud_sql_instance %}
+        cloud_sql_instance {
+          instances = [{{ vol.cloud_sql_instance.instances | map('tojson') | join(', ') }}]
+        }
+{% endif %}
+{% if vol.gcs %}
+        gcs {
+          bucket    = "{{ vol.gcs.bucket }}"
+          read_only = {{ vol.gcs.read_only | lower }}
+{% if vol.gcs.mount_options %}
+          mount_options = [{{ vol.gcs.mount_options | map('tojson') | join(', ') }}]
+{% endif %}
+        }
+{% endif %}
+{% if vol.nfs %}
+        nfs {
+          server    = "{{ vol.nfs.server }}"
+          path      = "{{ vol.nfs.path }}"
+          read_only = {{ vol.nfs.read_only | lower }}
+        }
+{% endif %}
+      }
+{% endfor %}
     }
   }
 }

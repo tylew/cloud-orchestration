@@ -1,0 +1,82 @@
+resource "google_bigquery_dataset" "{{ node.name }}" {
+  dataset_id                  = "{{ config.dataset_id }}"
+  location                    = "{{ config.location }}"
+{% if config.friendly_name %}
+  friendly_name               = "{{ config.friendly_name }}"
+{% endif %}
+{% if config.description %}
+  description                 = "{{ config.description }}"
+{% endif %}
+{% if config.default_table_expiration_ms is not none %}
+  default_table_expiration_ms     = {{ config.default_table_expiration_ms }}
+{% endif %}
+{% if config.default_partition_expiration_ms is not none %}
+  default_partition_expiration_ms = {{ config.default_partition_expiration_ms }}
+{% endif %}
+{% if config.max_time_travel_hours is not none %}
+  max_time_travel_hours           = {{ config.max_time_travel_hours }}
+{% endif %}
+{% if config.is_case_insensitive %}
+  is_case_insensitive             = {{ config.is_case_insensitive | lower }}
+{% endif %}
+{% if config.default_collation %}
+  default_collation               = "{{ config.default_collation }}"
+{% endif %}
+{% if config.storage_billing_model and config.storage_billing_model.value != "LOGICAL" %}
+  storage_billing_model           = "{{ config.storage_billing_model.value }}"
+{% endif %}
+  delete_contents_on_destroy      = {{ config.delete_contents_on_destroy | lower }}
+  project                     = var.gcp_project_id
+
+{% if config.labels %}
+  labels = {
+{% for k, v in config.labels.items() %}
+    {{ k }} = "{{ v }}"
+{% endfor %}
+  }
+{% endif %}
+}
+
+{% for table in config.tables %}
+resource "google_bigquery_table" "{{ node.name }}_{{ table.table_id }}" {
+  dataset_id          = google_bigquery_dataset.{{ node.name }}.dataset_id
+  table_id            = "{{ table.table_id }}"
+{% if table.columns is defined and table.columns %}
+  schema = jsonencode([
+{% for col in table.columns %}
+    {
+      name = "{{ col.name }}"
+      type = "{{ col.type }}"
+      mode = "{{ col.mode | default('NULLABLE') }}"
+{% if col.description %}
+      description = "{{ col.description }}"
+{% endif %}
+{% if col.fields is defined and col.fields %}
+      fields = [
+{% for subcol in col.fields %}
+        { name = "{{ subcol.name }}", type = "{{ subcol.type }}", mode = "{{ subcol.mode | default('NULLABLE') }}" },
+{% endfor %}
+      ]
+{% endif %}
+    },
+{% endfor %}
+  ])
+{% elif table.schema_file %}
+  schema              = file("{{ table.schema_file }}")
+{% endif %}
+  deletion_protection = {{ table.deletion_protection | lower }}
+  project             = var.gcp_project_id
+{% if table.clustering %}
+  clustering          = {{ table.clustering | tojson }}
+{% endif %}
+
+{% if table.time_partitioning %}
+  time_partitioning {
+    type  = "{{ table.time_partitioning.type }}"
+{% if table.time_partitioning.field %}
+    field = "{{ table.time_partitioning.field }}"
+{% endif %}
+  }
+{% endif %}
+}
+{% endfor %}

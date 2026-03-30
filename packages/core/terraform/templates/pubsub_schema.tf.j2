@@ -1,0 +1,8 @@
+resource "google_pubsub_schema" "{{ node.name }}" {
+  name       = "${var.environment}-{{ node.name }}"
+  project    = var.gcp_project_id
+  type       = "{{ config.type }}"
+  definition = <<-EOT
+{{ config.definition }}
+EOT
+}

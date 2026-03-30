@@ -1,0 +1,111 @@
+resource "google_pubsub_subscription" "{{ node.name }}" {
+  name                         = "${var.environment}-{{ node.name }}"
+  topic                        = {{ resolve_ref(config.topic) }}
+  ack_deadline_seconds         = {{ config.ack_deadline_seconds }}
+  message_retention_duration   = "{{ config.message_retention_duration }}"
+  retain_acked_messages        = {{ config.retain_acked_messages | lower }}
+  enable_message_ordering      = {{ config.enable_message_ordering | lower }}
+  enable_exactly_once_delivery = {{ config.enable_exactly_once_delivery | lower }}
+{% if config.filter %}
+  filter                       = "{{ config.filter }}"
+{% endif %}
+  project                      = var.gcp_project_id
+
+{% if config.labels %}
+  labels = {
+{% for k, v in config.labels.items() %}
+    {{ k }} = "{{ v }}"
+{% endfor %}
+  }
+{% endif %}
+
+{% if config.retry_policy %}
+  retry_policy {
+    minimum_backoff = "{{ config.retry_policy.minimum_backoff }}"
+    maximum_backoff = "{{ config.retry_policy.maximum_backoff }}"
+  }
+{% endif %}
+
+{% if config.dead_letter_policy %}
+  dead_letter_policy {
+    dead_letter_topic     = {{ resolve_ref(config.dead_letter_policy.dead_letter_topic) }}
+    max_delivery_attempts = {{ config.dead_letter_policy.max_delivery_attempts }}
+  }
+{% endif %}
+
+{% if config.push_config %}
+  push_config {
+    push_endpoint = {{ resolve_ref(config.push_config.push_endpoint) }}
+{% if config.push_config.attributes %}
+    attributes = {
+{% for k, v in config.push_config.attributes.items() %}
+      {{ k }} = "{{ v }}"
+{% endfor %}
+    }
+{% endif %}
+{% if config.push_config.oidc_token %}
+    oidc_token {
+      service_account_email = {{ resolve_ref(config.push_config.oidc_token.service_account_email) }}
+{% if config.push_config.oidc_token.audience %}
+      audience              = "{{ config.push_config.oidc_token.audience }}"
+{% endif %}
+    }
+{% endif %}
+{% if config.push_config.no_wrapper %}
+    no_wrapper {
+      write_metadata = {{ config.push_config.no_wrapper.write_metadata | lower }}
+    }
+{% endif %}
+  }
+{% endif %}
+
+{% if config.bigquery_config %}
+  bigquery_config {
+    table              = "{{ config.bigquery_config.table }}"
+    use_topic_schema   = {{ config.bigquery_config.use_topic_schema | lower }}
+    use_table_schema   = {{ config.bigquery_config.use_table_schema | lower }}
+    write_metadata     = {{ config.bigquery_config.write_metadata | lower }}
+    drop_unknown_fields = {{ config.bigquery_config.drop_unknown_fields | lower }}
+{% if config.bigquery_config.service_account_email %}
+    service_account_email = {{ resolve_ref(config.bigquery_config.service_account_email) }}
+{% endif %}
+  }
+{% endif %}
+
+{% if config.cloud_storage_config %}
+  cloud_storage_config {
+    bucket = {{ resolve_ref(config.cloud_storage_config.bucket) }}
+{% if config.cloud_storage_config.filename_prefix %}
+    filename_prefix = "{{ config.cloud_storage_config.filename_prefix }}"
+{% endif %}
+{% if config.cloud_storage_config.filename_suffix %}
+    filename_suffix = "{{ config.cloud_storage_config.filename_suffix }}"
+{% endif %}
+{% if config.cloud_storage_config.filename_datetime_format %}
+    filename_datetime_format = "{{ config.cloud_storage_config.filename_datetime_format }}"
+{% endif %}
+    max_duration = "{{ config.cloud_storage_config.max_duration }}"
+{% if config.cloud_storage_config.max_bytes %}
+    max_bytes = {{ config.cloud_storage_config.max_bytes }}
+{% endif %}
+{% if config.cloud_storage_config.max_messages %}
+    max_messages = {{ config.cloud_storage_config.max_messages }}
+{% endif %}
+{% if config.cloud_storage_config.avro_config %}
+    avro_config {
+      write_metadata   = {{ config.cloud_storage_config.avro_config.write_metadata | lower }}
+      use_topic_schema = {{ config.cloud_storage_config.avro_config.use_topic_schema | lower }}
+    }
+{% endif %}
+{% if config.cloud_storage_config.service_account_email %}
+    service_account_email = {{ resolve_ref(config.cloud_storage_config.service_account_email) }}
+{% endif %}
+  }
+{% endif %}
+
+{% if config.expiration_policy %}
+  expiration_policy {
+    ttl = "{{ config.expiration_policy.ttl }}"
+  }
+{% endif %}
+}

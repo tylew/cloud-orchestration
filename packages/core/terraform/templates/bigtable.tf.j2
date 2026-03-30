@@ -1,0 +1,43 @@
+resource "google_bigtable_instance" "{{ node.name }}" {
+  name                = "{{ config.instance_id }}"
+{% if config.display_name %}
+  display_name        = "{{ config.display_name }}"
+{% endif %}
+  deletion_protection = {{ config.deletion_protection | lower }}
+  force_destroy       = {{ config.force_destroy | lower }}
+  project             = var.gcp_project_id
+
+  cluster {
+    cluster_id   = "{{ config.cluster.cluster_id }}"
+    zone         = "{{ config.cluster.zone }}"
+{% if not config.autoscaling %}
+    num_nodes    = {{ config.cluster.num_nodes }}
+{% endif %}
+    storage_type = "{{ config.cluster.storage_type }}"
+
+{% if config.autoscaling %}
+    autoscaling_config {
+      min_nodes      = {{ config.autoscaling.min_nodes }}
+      max_nodes      = {{ config.autoscaling.max_nodes }}
+      cpu_target     = {{ config.autoscaling.cpu_target }}
+{% if config.autoscaling.storage_target is not none %}
+      storage_target = {{ config.autoscaling.storage_target }}
+{% endif %}
+    }
+{% endif %}
+  }
+}
+
+{% for table in config.tables %}
+resource "google_bigtable_table" "{{ node.name }}_{{ table.table_id }}" {
+  name          = "{{ table.table_id }}"
+  instance_name = google_bigtable_instance.{{ node.name }}.name
+  project       = var.gcp_project_id
+
+{% for cf in table.column_families %}
+  column_family {
+    family = "{{ cf.family }}"
+  }
+{% endfor %}
+}
+{% endfor %}

@@ -1,0 +1,24 @@
+resource "google_vpc_access_connector" "{{ node.name }}" {
+  name           = "${var.environment}-{{ node.name }}"
+  region         = {{ resolve_ref(config.region) if config.region.startswith('node:') else '"' ~ config.region ~ '"' }}
+{% if config.network %}
+  network        = {{ resolve_ref(config.network) }}
+{% endif %}
+{% if config.ip_cidr_range %}
+  ip_cidr_range  = "{{ config.ip_cidr_range }}"
+{% endif %}
+{% if config.subnet %}
+  subnet {
+    name = {{ resolve_ref(config.subnet.name) if config.subnet.name.startswith('node:') else '"' ~ config.subnet.name ~ '"' }}
+{% if config.subnet.project_id %}
+    project_id = "{{ config.subnet.project_id }}"
+{% endif %}
+  }
+{% endif %}
+  min_throughput = {{ config.min_throughput }}
+  max_throughput = {{ config.max_throughput }}
+  machine_type   = "{{ config.machine_type }}"
+  min_instances  = {{ config.min_instances }}
+  max_instances  = {{ config.max_instances }}
+  project        = var.gcp_project_id
+}

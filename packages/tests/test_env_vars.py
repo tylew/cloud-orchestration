@@ -105,4 +105,4 @@ class TestCloudFunctionConfigEnvVars:
         from packages.core.schemas.configs.cloud_function import CloudFunctionConfig
         assert "env" not in CloudFunctionConfig.model_fields
         assert "secrets" not in CloudFunctionConfig.model_fields
-        assert "secret_environment_variables" not in CloudFunctionConfig.model_fields
+        # secret_environment_variables is now a proper field matching Terraform spec

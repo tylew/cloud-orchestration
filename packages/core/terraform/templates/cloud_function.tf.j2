@@ -3,6 +3,13 @@ resource "google_cloudfunctions2_function" "{{ node.name }}" {
   location = var.gcp_region
   project  = var.gcp_project_id
 
+{% if config.description %}
+  description = "{{ config.description }}"
+{% endif %}
+{% if config.kms_key_name %}
+  kms_key_name = "{{ config.kms_key_name }}"
+{% endif %}
+
 {% if config.labels %}
   labels = {
 {% for k, v in config.labels.items() %}
@@ -14,11 +21,57 @@ resource "google_cloudfunctions2_function" "{{ node.name }}" {
   build_config {
     runtime     = "{{ config.runtime }}"
     entry_point = "{{ config.entry_point }}"
+{% if config.build_config and config.build_config.docker_repository %}
+    docker_repository = "{{ config.build_config.docker_repository }}"
+{% endif %}
+{% if config.build_config and config.build_config.worker_pool %}
+    worker_pool = "{{ config.build_config.worker_pool }}"
+{% endif %}
+{% if config.build_config and config.build_config.service_account %}
+    service_account = "{{ config.build_config.service_account }}"
+{% endif %}
+{% if config.build_config and config.build_config.environment_variables %}
+    environment_variables = {
+{% for k, v in config.build_config.environment_variables.items() %}
+      {{ k }} = "{{ v }}"
+{% endfor %}
+    }
+{% endif %}
+{% if config.build_config and config.build_config.automatic_update_policy %}
+    automatic_update_policy {}
+{% endif %}
+{% if config.build_config and config.build_config.on_deploy_update_policy %}
+    on_deploy_update_policy {}
+{% endif %}
 {% if config.source and config.source.storage_source %}
     source {
       storage_source {
         bucket = "{{ config.source.storage_source.bucket }}"
         object = "{{ config.source.storage_source.object }}"
+{% if config.source.storage_source.generation is not none %}
+        generation = {{ config.source.storage_source.generation }}
+{% endif %}
+      }
+    }
+{% elif config.source and config.source.repo_source %}
+    source {
+      repo_source {
+        repo_name = "{{ config.source.repo_source.repo_name }}"
+{% if config.source.repo_source.branch_name %}
+        branch_name = "{{ config.source.repo_source.branch_name }}"
+{% endif %}
+{% if config.source.repo_source.tag_name %}
+        tag_name = "{{ config.source.repo_source.tag_name }}"
+{% endif %}
+{% if config.source.repo_source.commit_sha %}
+        commit_sha = "{{ config.source.repo_source.commit_sha }}"
+{% endif %}
+{% if config.source.repo_source.dir %}
+        dir = "{{ config.source.repo_source.dir }}"
+{% endif %}
+{% if config.source.repo_source.invert_regex %}
+        invert_regex = true
+{% endif %}
       }
     }
 {% elif config.source_bucket %}
@@ -32,24 +85,47 @@ resource "google_cloudfunctions2_function" "{{ node.name }}" {
   }
 
   service_config {
-    available_cpu                    = "{{ config.cpu }}"
+    available_cpu                    = "{{ config.available_cpu or config.cpu }}"
     available_memory                 = "{{ config.memory }}"
     timeout_seconds                  = {{ config.timeout_seconds }}
     min_instance_count               = {{ config.min_instances }}
     max_instance_count               = {{ config.max_instances }}
     max_instance_request_concurrency = {{ config.max_concurrent_requests }}
     ingress_settings                 = "{{ config.ingress }}"
+    all_traffic_on_latest_revision   = {{ config.all_traffic_on_latest_revision | lower }}
     service_account_email            = {{ resolve_ref(config.service_account) if config.service_account.startswith('node:') else '"' ~ config.service_account ~ '"' }}
+{% if config.binary_authorization_policy %}
+    binary_authorization_policy      = "{{ config.binary_authorization_policy }}"
+{% endif %}
 {% if config.vpc_connector %}
     vpc_connector                    = {{ resolve_ref(config.vpc_connector) }}
     vpc_connector_egress_settings    = "{{ config.vpc_connector_egress_settings }}"
 {% endif %}
+{% if config.direct_vpc_network_interface %}
+    direct_vpc_network_interface {
+{% if config.direct_vpc_network_interface.network %}
+      network = "{{ config.direct_vpc_network_interface.network }}"
+{% endif %}
+{% if config.direct_vpc_network_interface.subnetwork %}
+      subnetwork = "{{ config.direct_vpc_network_interface.subnetwork }}"
+{% endif %}
+{% if config.direct_vpc_network_interface.tags %}
+      tags = [{{ config.direct_vpc_network_interface.tags | map('tojson') | join(', ') }}]
+{% endif %}
+    }
+{% if config.direct_vpc_egress %}
+    direct_vpc_egress = "{{ config.direct_vpc_egress }}"
+{% endif %}
+{% endif %}
 
 {% set value_vars = config.env_vars | selectattr("type", "equalto", "value") | list %}
-{% if value_vars %}
+{% if value_vars or config.environment_variables %}
     environment_variables = {
 {% for e in value_vars %}
       {{ e.name }} = "{{ e.value }}"
+{% endfor %}
+{% for k, v in config.environment_variables.items() %}
+      {{ k }} = "{{ v }}"
 {% endfor %}
     }
 {% endif %}
@@ -60,6 +136,28 @@ resource "google_cloudfunctions2_function" "{{ node.name }}" {
       project_id = var.gcp_project_id
       secret     = {{ resolve_ref(e.secret) if e.secret.startswith('node:') else '"' ~ e.secret ~ '"' }}
       version    = "{{ e.version }}"
+    }
+{% endfor %}
+{% for sev in config.secret_environment_variables %}
+    secret_environment_variables {
+      key        = "{{ sev.key }}"
+      project_id = {{ '"' ~ sev.project_id ~ '"' if sev.project_id else 'var.gcp_project_id' }}
+      secret     = "{{ sev.secret }}"
+      version    = "{{ sev.version }}"
+    }
+{% endfor %}
+
+{% for sv in config.secret_volumes %}
+    secret_volumes {
+      mount_path = "{{ sv.mount_path }}"
+      project_id = {{ '"' ~ sv.project_id ~ '"' if sv.project_id else 'var.gcp_project_id' }}
+      secret     = "{{ sv.secret }}"
+{% for ver in sv.versions %}
+      versions {
+        version = "{{ ver.version }}"
+        path    = "{{ ver.path }}"
+      }
+{% endfor %}
     }
 {% endfor %}
   }

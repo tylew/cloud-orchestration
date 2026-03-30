@@ -1,0 +1,140 @@
+resource "google_storage_bucket" "{{ node.name }}" {
+  name                        = "${var.environment}-{{ node.name }}"
+  location                    = "{{ config.location }}"
+  storage_class               = "{{ config.storage_class }}"
+  uniform_bucket_level_access = {{ config.uniform_bucket_level_access | lower }}
+  force_destroy               = {{ config.force_destroy | lower }}
+  project                     = var.gcp_project_id
+{% if config.public_access_prevention != 'inherited' %}
+  public_access_prevention    = "{{ config.public_access_prevention }}"
+{% endif %}
+{% if config.requester_pays %}
+  requester_pays              = true
+{% endif %}
+{% if config.default_event_based_hold %}
+  default_event_based_hold    = true
+{% endif %}
+
+{% if config.labels %}
+  labels = {
+{% for k, v in config.labels.items() %}
+    {{ k }} = "{{ v }}"
+{% endfor %}
+  }
+{% endif %}
+
+{% if config.versioning %}
+  versioning {
+    enabled = {{ config.versioning.enabled | lower }}
+  }
+{% endif %}
+
+{% if config.website %}
+  website {
+{% if config.website.main_page_suffix %}
+    main_page_suffix = "{{ config.website.main_page_suffix }}"
+{% endif %}
+{% if config.website.not_found_page %}
+    not_found_page   = "{{ config.website.not_found_page }}"
+{% endif %}
+  }
+{% endif %}
+
+{% if config.autoclass %}
+  autoclass {
+    enabled = {{ config.autoclass.enabled | lower }}
+{% if config.autoclass.terminal_storage_class %}
+    terminal_storage_class = "{{ config.autoclass.terminal_storage_class }}"
+{% endif %}
+  }
+{% endif %}
+
+{% if config.lifecycle_rule %}
+{% for rule in config.lifecycle_rule %}
+  lifecycle_rule {
+    action {
+      type          = "{{ rule.action.type }}"
+{% if rule.action.storage_class %}
+      storage_class = "{{ rule.action.storage_class }}"
+{% endif %}
+    }
+    condition {
+{% if rule.condition.age is not none %}
+      age = {{ rule.condition.age }}
+{% endif %}
+{% if rule.condition.num_newer_versions is not none %}
+      num_newer_versions = {{ rule.condition.num_newer_versions }}
+{% endif %}
+{% if rule.condition.with_state %}
+      with_state = "{{ rule.condition.with_state }}"
+{% endif %}
+{% if rule.condition.created_before %}
+      created_before = "{{ rule.condition.created_before }}"
+{% endif %}
+{% if rule.condition.matches_storage_class %}
+      matches_storage_class = {{ rule.condition.matches_storage_class | tojson }}
+{% endif %}
+{% if rule.condition.matches_prefix %}
+      matches_prefix = {{ rule.condition.matches_prefix | tojson }}
+{% endif %}
+{% if rule.condition.matches_suffix %}
+      matches_suffix = {{ rule.condition.matches_suffix | tojson }}
+{% endif %}
+{% if rule.condition.days_since_noncurrent_time is not none %}
+      days_since_noncurrent_time = {{ rule.condition.days_since_noncurrent_time }}
+{% endif %}
+{% if rule.condition.days_since_custom_time is not none %}
+      days_since_custom_time = {{ rule.condition.days_since_custom_time }}
+{% endif %}
+{% if rule.condition.custom_time_before %}
+      custom_time_before = "{{ rule.condition.custom_time_before }}"
+{% endif %}
+{% if rule.condition.noncurrent_time_before %}
+      noncurrent_time_before = "{{ rule.condition.noncurrent_time_before }}"
+{% endif %}
+    }
+  }
+{% endfor %}
+{% endif %}
+
+{% if config.cors %}
+{% for cors in config.cors %}
+  cors {
+    origin          = {{ cors.origin | tojson }}
+    method          = {{ cors.method | tojson }}
+    response_header = {{ cors.response_header | tojson }}
+    max_age_seconds = {{ cors.max_age_seconds }}
+  }
+{% endfor %}
+{% endif %}
+
+{% if config.retention_policy %}
+  retention_policy {
+    retention_period = {{ config.retention_policy.retention_period }}
+{% if config.retention_policy.is_locked %}
+    is_locked        = true
+{% endif %}
+  }
+{% endif %}
+
+{% if config.encryption %}
+  encryption {
+    default_kms_key_name = "{{ config.encryption.default_kms_key_name }}"
+  }
+{% endif %}
+
+{% if config.logging %}
+  logging {
+    log_bucket        = {{ resolve_ref(config.logging.log_bucket) if config.logging.log_bucket.startswith('node:') else '"' ~ config.logging.log_bucket ~ '"' }}
+{% if config.logging.log_object_prefix %}
+    log_object_prefix = "{{ config.logging.log_object_prefix }}"
+{% endif %}
+  }
+{% endif %}
+
+{% if config.soft_delete_policy %}
+  soft_delete_policy {
+    retention_duration_seconds = {{ config.soft_delete_policy.retention_duration_seconds }}
+  }
+{% endif %}
+}

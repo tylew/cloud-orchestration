@@ -1,0 +1,77 @@
+resource "google_sql_database_instance" "{{ node.name }}" {
+  name                = "${var.environment}-{{ node.name }}"
+  database_version    = "{{ config.database_version }}"
+  region              = var.gcp_region
+  project             = var.gcp_project_id
+  deletion_protection = {{ config.deletion_protection | lower }}
+
+  settings {
+    tier              = "{{ config.tier }}"
+    availability_type = "{{ config.availability_type }}"
+    disk_size         = {{ config.disk_size }}
+    disk_type         = "{{ config.disk_type }}"
+    disk_autoresize   = {{ config.disk_autoresize | lower }}
+{% if config.disk_autoresize_limit %}
+    disk_autoresize_limit = {{ config.disk_autoresize_limit }}
+{% endif %}
+{% if config.edition %}
+    edition           = "{{ config.edition }}"
+{% endif %}
+
+{% if config.ip_configuration %}
+    ip_configuration {
+      ipv4_enabled    = {{ config.ip_configuration.ipv4_enabled | lower }}
+{% if config.ip_configuration.private_network %}
+      private_network = {{ resolve_ref(config.ip_configuration.private_network) }}
+{% endif %}
+      require_ssl     = {{ config.ip_configuration.require_ssl | lower }}
+{% if config.ip_configuration.ssl_mode %}
+      ssl_mode        = "{{ config.ip_configuration.ssl_mode }}"
+{% endif %}
+    }
+{% endif %}
+
+{% if config.backup_configuration %}
+    backup_configuration {
+      enabled                        = {{ config.backup_configuration.enabled | lower }}
+      point_in_time_recovery_enabled = {{ config.backup_configuration.point_in_time_recovery_enabled | lower }}
+      start_time                     = "{{ config.backup_configuration.start_time }}"
+      transaction_log_retention_days = {{ config.backup_configuration.transaction_log_retention_days }}
+{% if config.backup_configuration.retained_backups %}
+      retained_backups               = {{ config.backup_configuration.retained_backups }}
+{% endif %}
+    }
+{% endif %}
+
+{% if config.maintenance_window %}
+    maintenance_window {
+      day          = {{ config.maintenance_window.day }}
+      hour         = {{ config.maintenance_window.hour }}
+      update_track = "{{ config.maintenance_window.update_track }}"
+    }
+{% endif %}
+
+{% if config.flags %}
+{% for flag in config.flags %}
+    database_flags {
+      name  = "{{ flag.name }}"
+      value = "{{ flag.value }}"
+    }
+{% endfor %}
+{% endif %}
+  }
+}
+
+{% for db in config.databases %}
+resource "google_sql_database" "{{ node.name }}_{{ db.name }}" {
+  name     = "{{ db.name }}"
+  instance = google_sql_database_instance.{{ node.name }}.name
+{% if db.charset %}
+  charset  = "{{ db.charset }}"
+{% endif %}
+{% if db.collation %}
+  collation = "{{ db.collation }}"
+{% endif %}
+  project  = var.gcp_project_id
+}
+{% endfor %}

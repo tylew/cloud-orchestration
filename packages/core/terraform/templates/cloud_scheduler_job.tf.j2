@@ -1,0 +1,27 @@
+resource "google_cloud_scheduler_job" "{{ node.name }}_schedule_{{ idx }}" {
+  name      = "${var.environment}-{{ node.name }}-schedule-{{ idx }}"
+  region    = var.gcp_region
+  project   = var.gcp_project_id
+  schedule  = "{{ trigger.schedule }}"
+  time_zone = "{{ trigger.time_zone }}"
+  paused    = {{ trigger.paused | lower }}
+
+  http_target {
+    http_method = "POST"
+    uri         = "https://${var.gcp_region}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${var.gcp_project_id}/jobs/${var.environment}-{{ node.name }}:run"
+{% if node.config.service_account %}
+    oauth_token {
+      service_account_email = google_service_account.{{ node.config.service_account }}.email
+    }
+{% endif %}
+  }
+
+{% if trigger.retry_config %}
+  retry_config {
+    retry_count = {{ trigger.retry_config.retry_count }}
+{% if trigger.retry_config.max_retry_duration %}
+    max_retry_duration = "{{ trigger.retry_config.max_retry_duration }}"
+{% endif %}
+  }
+{% endif %}
+}

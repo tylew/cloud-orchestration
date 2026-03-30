@@ -22,6 +22,38 @@ resource "google_dns_managed_zone" "{{ node.name }}" {
   }
 {% endif %}
 
+{% if config.cloud_logging_config and config.cloud_logging_config.enable_logging %}
+  cloud_logging_config {
+    enable_logging = true
+  }
+{% endif %}
+
+{% if config.forwarding_config and config.forwarding_config.target_name_servers %}
+  forwarding_config {
+{% for ns in config.forwarding_config.target_name_servers %}
+    target_name_servers {
+{% if ns.ipv4_address %}
+      ipv4_address    = "{{ ns.ipv4_address }}"
+{% endif %}
+{% if ns.ipv6_address %}
+      ipv6_address    = "{{ ns.ipv6_address }}"
+{% endif %}
+{% if ns.forwarding_path %}
+      forwarding_path = "{{ ns.forwarding_path }}"
+{% endif %}
+    }
+{% endfor %}
+  }
+{% endif %}
+
+{% if config.peering_config %}
+  peering_config {
+    target_network {
+      network_url = {{ resolve_ref(config.peering_config.target_network.network_url) if config.peering_config.target_network.network_url.startswith('node:') else '"' ~ config.peering_config.target_network.network_url ~ '"' }}
+    }
+  }
+{% endif %}
+
 {% if config.labels %}
   labels = {
 {% for key, value in config.labels.items() %}

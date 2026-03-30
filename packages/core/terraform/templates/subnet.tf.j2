@@ -1,0 +1,55 @@
+resource "google_compute_subnetwork" "{{ node.name }}" {
+  name                     = "${var.environment}-{{ node.name }}"
+  ip_cidr_range            = "{{ config.ip_cidr_range }}"
+  region                   = {{ resolve_ref(config.region) if config.region.startswith('node:') else '"' ~ config.region ~ '"' }}
+  network                  = {{ resolve_ref(config.network) }}
+  private_ip_google_access = {{ config.private_ip_google_access | lower }}
+  project                  = var.gcp_project_id
+{% if config.description %}
+  description              = "{{ config.description }}"
+{% endif %}
+{% if config.purpose %}
+  purpose                  = "{{ config.purpose }}"
+{% endif %}
+{% if config.role %}
+  role                     = "{{ config.role }}"
+{% endif %}
+{% if config.stack_type != 'IPV4_ONLY' %}
+  stack_type               = "{{ config.stack_type }}"
+{% endif %}
+{% if config.ipv6_access_type %}
+  ipv6_access_type         = "{{ config.ipv6_access_type }}"
+{% endif %}
+{% if config.private_ipv6_google_access %}
+  private_ipv6_google_access = "{{ config.private_ipv6_google_access }}"
+{% endif %}
+
+{% if config.secondary_ip_ranges %}
+{% for range in config.secondary_ip_ranges %}
+  secondary_ip_range {
+    range_name    = "{{ range.range_name }}"
+    ip_cidr_range = "{{ range.ip_cidr_range }}"
+  }
+{% endfor %}
+{% endif %}
+
+{% if config.log_config %}
+  log_config {
+{% if config.log_config.aggregation_interval %}
+    aggregation_interval = "{{ config.log_config.aggregation_interval }}"
+{% endif %}
+{% if config.log_config.flow_sampling is not none %}
+    flow_sampling        = {{ config.log_config.flow_sampling }}
+{% endif %}
+{% if config.log_config.metadata %}
+    metadata             = "{{ config.log_config.metadata }}"
+{% endif %}
+{% if config.log_config.metadata_fields %}
+    metadata_fields      = {{ config.log_config.metadata_fields | tojson }}
+{% endif %}
+{% if config.log_config.filter_expr %}
+    filter_expr          = "{{ config.log_config.filter_expr }}"
+{% endif %}
+  }
+{% endif %}
+}

@@ -1,0 +1,103 @@
+resource "google_cloud_tasks_queue" "{{ node.name }}" {
+  name     = "${var.environment}-{{ node.name }}"
+  location = {{ resolve_ref(config.location) if config.location.startswith('node:') else '"' ~ config.location ~ '"' }}
+  project  = var.gcp_project_id
+{% if config.desired_state %}
+  desired_state = "{{ config.desired_state }}"
+{% endif %}
+
+{% if config.rate_limits %}
+  rate_limits {
+    max_dispatches_per_second = {{ config.rate_limits.max_dispatches_per_second }}
+    max_concurrent_dispatches = {{ config.rate_limits.max_concurrent_dispatches }}
+  }
+{% endif %}
+
+{% if config.retry_config %}
+  retry_config {
+    max_attempts  = {{ config.retry_config.max_attempts }}
+{% if config.retry_config.max_retry_duration %}
+    max_retry_duration = "{{ config.retry_config.max_retry_duration }}"
+{% endif %}
+    min_backoff   = "{{ config.retry_config.min_backoff }}"
+    max_backoff   = "{{ config.retry_config.max_backoff }}"
+    max_doublings = {{ config.retry_config.max_doublings }}
+  }
+{% endif %}
+
+{% if config.stackdriver_logging_config %}
+  stackdriver_logging_config {
+    sampling_ratio = {{ config.stackdriver_logging_config.sampling_ratio }}
+  }
+{% endif %}
+
+{% if config.app_engine_routing_override %}
+  app_engine_routing_override {
+{% if config.app_engine_routing_override.service %}
+    service  = "{{ config.app_engine_routing_override.service }}"
+{% endif %}
+{% if config.app_engine_routing_override.version %}
+    version  = "{{ config.app_engine_routing_override.version }}"
+{% endif %}
+{% if config.app_engine_routing_override.instance %}
+    instance = "{{ config.app_engine_routing_override.instance }}"
+{% endif %}
+  }
+{% endif %}
+
+{% if config.http_target %}
+  http_target {
+{% if config.http_target.http_method %}
+    http_method = "{{ config.http_target.http_method }}"
+{% endif %}
+{% if config.http_target.uri_override %}
+    uri_override {
+{% if config.http_target.uri_override.scheme %}
+      scheme = "{{ config.http_target.uri_override.scheme }}"
+{% endif %}
+{% if config.http_target.uri_override.host %}
+      host   = "{{ config.http_target.uri_override.host }}"
+{% endif %}
+{% if config.http_target.uri_override.port %}
+      port   = {{ config.http_target.uri_override.port }}
+{% endif %}
+{% if config.http_target.uri_override.path_override %}
+      path_override {
+        path = "{{ config.http_target.uri_override.path_override.path }}"
+      }
+{% endif %}
+{% if config.http_target.uri_override.query_override %}
+      query_override {
+        query_params = "{{ config.http_target.uri_override.query_override.query_params }}"
+      }
+{% endif %}
+      uri_override_enforce_mode = "{{ config.http_target.uri_override.uri_override_enforce_mode }}"
+    }
+{% endif %}
+{% for ho in config.http_target.header_overrides %}
+    header_overrides {
+      header {
+        key   = "{{ ho.header.key }}"
+        value = "{{ ho.header.value }}"
+      }
+    }
+{% endfor %}
+{% if config.http_target.oauth_token %}
+    oauth_token {
+      service_account_email = {{ resolve_ref(config.http_target.oauth_token.service_account_email) }}
+{% if config.http_target.oauth_token.scope %}
+      scope                 = "{{ config.http_target.oauth_token.scope }}"
+{% endif %}
+    }
+{% endif %}
+{% if config.http_target.oidc_token %}
+    oidc_token {
+      service_account_email = {{ resolve_ref(config.http_target.oidc_token.service_account_email) }}
+{% if config.http_target.oidc_token.audience %}
+      audience              = "{{ config.http_target.oidc_token.audience }}"
+{% endif %}
+    }
+{% endif %}
+  }
+{% endif %}
+}
