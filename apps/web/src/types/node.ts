@@ -7,6 +7,8 @@ export type EnvVarEntry = {
 }
 
 export type BaseNode = {
+  id?: string
+  resource_id?: string
   slug: string
   name: string
   type: string
