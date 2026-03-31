@@ -249,3 +249,348 @@ class TestTerraformValidate:
             }, depends_on=["my-sa", "my-db", "my-fs", "my-bucket"]),
         ])
         assert ok, output
+
+
+class TestTerraformValidateRichConfigs:
+    """Tests for S01 schema additions — rich config fields across node types."""
+
+    # ── Cloud Run ────────────────────────────────────────────────────
+
+    def test_cloud_run_gpu(self):
+        """Cloud Run with GPU and node_selector."""
+        ok, output = _validate_blueprint([
+            _node("gpu-service", "cloud_run", {
+                "image": "us-docker.pkg.dev/cloudrun/container/hello",
+                "service_account": "test@proj.iam.gserviceaccount.com",
+                "gpu": "1",
+                "node_selector": {"accelerator": "nvidia-l4"},
+                "cpu": "4",
+                "memory": "16Gi",
+            }),
+        ])
+        assert ok, output
+
+    def test_cloud_run_probes(self):
+        """Cloud Run with liveness (http), startup (tcp), readiness (grpc) probes."""
+        ok, output = _validate_blueprint([
+            _node("probed-service", "cloud_run", {
+                "image": "us-docker.pkg.dev/cloudrun/container/hello",
+                "service_account": "test@proj.iam.gserviceaccount.com",
+                "liveness_probe": {
+                    "http_get": {"path": "/healthz", "port": 8080},
+                    "initial_delay_seconds": 5,
+                    "period_seconds": 15,
+                    "timeout_seconds": 3,
+                    "failure_threshold": 3,
+                },
+                "startup_probe": {
+                    "tcp_socket": {"port": 8080},
+                    "initial_delay_seconds": 0,
+                    "period_seconds": 5,
+                    "timeout_seconds": 2,
+                    "failure_threshold": 12,
+                },
+                "readiness_probe": {
+                    "grpc": {"port": 8080, "service": "health.v1"},
+                    "timeout_seconds": 1,
+                    "period_seconds": 10,
+                    "failure_threshold": 3,
+                    "success_threshold": 2,
+                },
+            }),
+        ])
+        assert ok, output
+
+    def test_cloud_run_volumes(self):
+        """Cloud Run with cloud_sql_instance, gcs, empty_dir, and secret volumes."""
+        ok, output = _validate_blueprint([
+            _node("vol-service", "cloud_run", {
+                "image": "us-docker.pkg.dev/cloudrun/container/hello",
+                "service_account": "test@proj.iam.gserviceaccount.com",
+                "volumes": [
+                    {
+                        "name": "cloudsql",
+                        "cloud_sql_instance": {
+                            "instances": ["test-project:us-central1:my-db"],
+                        },
+                    },
+                    {
+                        "name": "gcs-data",
+                        "gcs": {
+                            "bucket": "my-data-bucket",
+                            "read_only": True,
+                        },
+                    },
+                    {
+                        "name": "scratch",
+                        "empty_dir": {
+                            "medium": "MEMORY",
+                            "size_limit": "256Mi",
+                        },
+                    },
+                    {
+                        "name": "app-secret",
+                        "secret": {
+                            "secret": "my-api-key",
+                            "default_mode": 292,
+                            "items": [
+                                {"version": "latest", "path": "api-key.txt"},
+                            ],
+                        },
+                    },
+                ],
+                "volume_mounts": [
+                    {"name": "gcs-data", "mount_path": "/data"},
+                    {"name": "scratch", "mount_path": "/tmp/scratch"},
+                    {"name": "app-secret", "mount_path": "/secrets"},
+                ],
+            }),
+        ])
+        assert ok, output
+
+    def test_cloud_run_service_fields(self):
+        """Cloud Run with description, launch_stage, ingress, labels, annotations.
+
+        NOTE: annotation keys containing dots (e.g. 'run.googleapis.com/cpu-throttling')
+        are a known template bug — the template renders them unquoted, causing Terraform
+        to interpret dots as attribute access. The test uses simple keys to validate the
+        annotation rendering path works; a separate xfail test covers the dots bug.
+        """
+        ok, output = _validate_blueprint([
+            _node("fancy-service", "cloud_run", {
+                "image": "us-docker.pkg.dev/cloudrun/container/hello",
+                "service_account": "test@proj.iam.gserviceaccount.com",
+                "description": "A fully loaded test service",
+                "launch_stage": "GA",
+                "ingress": "INGRESS_TRAFFIC_INTERNAL_ONLY",
+                "labels": {"team": "platform", "cost-center": "infra"},
+                "annotations": {"cpu-throttling": "false"},
+            }),
+        ])
+        assert ok, output
+
+    @pytest.mark.xfail(reason="TEMPLATE BUG: annotation keys with dots rendered unquoted in cloud_run.tf.j2")
+    def test_cloud_run_annotations_dotted_keys(self):
+        """Cloud Run annotations with dotted keys — exposes template quoting bug."""
+        ok, output = _validate_blueprint([
+            _node("dotted-service", "cloud_run", {
+                "image": "us-docker.pkg.dev/cloudrun/container/hello",
+                "service_account": "test@proj.iam.gserviceaccount.com",
+                "annotations": {"run.googleapis.com/cpu-throttling": "false"},
+            }),
+        ])
+        assert ok, output
+
+    # ── Cloud Run Job ────────────────────────────────────────────────
+
+    def test_cloud_run_job_gpu_encryption(self):
+        """Cloud Run Job with GPU and encryption_key."""
+        ok, output = _validate_blueprint([
+            _node("gpu-job", "cloud_run_job", {
+                "image": "us-docker.pkg.dev/cloudrun/container/job",
+                "service_account": "test@proj.iam.gserviceaccount.com",
+                "gpu": "1",
+                "node_selector": {"accelerator": "nvidia-l4"},
+                "encryption_key": "projects/test/locations/us/keyRings/kr/cryptoKeys/key",
+                "cpu": "4",
+                "memory": "16Gi",
+            }),
+        ])
+        assert ok, output
+
+    # ── Cloud Function ───────────────────────────────────────────────
+
+    def test_cloud_function_build_config(self):
+        """Cloud Function with build_config (docker_repository, worker_pool, env vars)."""
+        ok, output = _validate_blueprint([
+            _node("build-func", "cloud_function", {
+                "runtime": "python312",
+                "entry_point": "handler",
+                "service_account": "test@proj.iam.gserviceaccount.com",
+                "source_bucket": "my-source-bucket",
+                "source_object": "source.zip",
+                "build_config": {
+                    "docker_repository": "projects/test/locations/us-central1/repositories/my-repo",
+                    "worker_pool": "projects/test/locations/us-central1/workerPools/my-pool",
+                    "environment_variables": {
+                        "GOPROXY": "off",
+                        "PIP_INDEX_URL": "https://pypi.org/simple",
+                    },
+                },
+            }),
+        ])
+        assert ok, output
+
+    def test_cloud_function_description_kms(self):
+        """Cloud Function with description and kms_key_name."""
+        ok, output = _validate_blueprint([
+            _node("secure-func", "cloud_function", {
+                "runtime": "nodejs20",
+                "entry_point": "helloWorld",
+                "service_account": "test@proj.iam.gserviceaccount.com",
+                "source_bucket": "my-source-bucket",
+                "source_object": "source.zip",
+                "description": "A CMEK-protected function",
+                "kms_key_name": "projects/test/locations/us/keyRings/kr/cryptoKeys/key",
+            }),
+        ])
+        assert ok, output
+
+    # ── Cloud SQL ────────────────────────────────────────────────────
+
+    @pytest.mark.xfail(reason="TEMPLATE BUG: cloud_sql.tf.j2 renders require_ssl which is removed in google provider >= 6.x, and missing authorized_networks block")
+    def test_cloud_sql_authorized_networks(self):
+        """Cloud SQL with ip_configuration.authorized_networks.
+
+        Exposes two template bugs:
+        1. require_ssl rendered unconditionally (removed in google provider >= 6.x)
+        2. authorized_networks not rendered in ip_configuration block
+        """
+        ok, output = _validate_blueprint([
+            _node("auth-db", "cloud_sql", {
+                "database_version": "POSTGRES_15",
+                "tier": "db-f1-micro",
+                "ip_configuration": {
+                    "ipv4_enabled": True,
+                    "require_ssl": False,
+                    "authorized_networks": [
+                        {"name": "office", "value": "203.0.113.0/24"},
+                        {"name": "vpn", "value": "198.51.100.0/24"},
+                    ],
+                },
+            }),
+        ])
+        assert ok, output
+
+    def test_cloud_sql_labels_edition_location(self):
+        """Cloud SQL with user_labels, edition, and location_preference."""
+        ok, output = _validate_blueprint([
+            _node("labeled-db", "cloud_sql", {
+                "database_version": "POSTGRES_15",
+                "tier": "db-custom-2-7680",
+                "edition": "ENTERPRISE",
+                "user_labels": {"team": "data", "env": "dev"},
+                "location_preference": {"zone": "us-central1-a"},
+            }),
+        ])
+        assert ok, output
+
+    # ── Firestore ────────────────────────────────────────────────────
+
+    def test_firestore_edition_cmek_tags(self):
+        """Firestore with database_edition, cmek_config, and tags."""
+        ok, output = _validate_blueprint([
+            _node("secure-fs", "firestore", {
+                "location_id": "nam5",
+                "database_edition": "ENTERPRISE",
+                "cmek_config": {
+                    "kms_key_name": "projects/test/locations/us/keyRings/kr/cryptoKeys/key",
+                },
+                "tags": {"env": "production", "compliance": "pci"},
+            }),
+        ])
+        assert ok, output
+
+    # ── VPC Connector ────────────────────────────────────────────────
+
+    @pytest.mark.xfail(reason="TEMPLATE BUG: vpc_connector.tf.j2 renders both throughput and instances unconditionally — they conflict in google provider")
+    def test_vpc_connector(self):
+        """VPC Connector standalone — exercises vpc_connector.tf.j2.
+
+        Exposes template bug: min/max_throughput and min/max_instances are mutually
+        exclusive in the google provider, but the template renders all four.
+        """
+        ok, output = _validate_blueprint([
+            _node("my-vpc", "vpc", {"auto_create_subnetworks": False}),
+            _node("my-connector", "vpc_connector", {
+                "region": "us-central1",
+                "network": "my-vpc",
+                "ip_cidr_range": "10.8.0.0/28",
+                "min_throughput": 200,
+                "max_throughput": 300,
+                "machine_type": "e2-micro",
+                "min_instances": 2,
+                "max_instances": 3,
+            }, depends_on=["my-vpc"]),
+        ])
+        assert ok, output
+
+    # ── Cloud DNS ────────────────────────────────────────────────────
+
+    def test_cloud_dns(self):
+        """Cloud DNS standalone — exercises cloud_dns.tf.j2."""
+        ok, output = _validate_blueprint([
+            _node("my-zone", "cloud_dns", {
+                "dns_name": "example.com.",
+                "visibility": "public",
+                "description": "Test DNS zone",
+                "dnssec_enabled": True,
+                "records": [
+                    {
+                        "name": "@",
+                        "type": "A",
+                        "ttl": 300,
+                        "rrdatas": ["1.2.3.4"],
+                    },
+                    {
+                        "name": "www",
+                        "type": "CNAME",
+                        "ttl": 300,
+                        "rrdatas": ["example.com."],
+                    },
+                ],
+            }),
+        ])
+        assert ok, output
+
+    # ── Bigtable ─────────────────────────────────────────────────────
+
+    def test_bigtable_display_name(self):
+        """Bigtable with display_name set."""
+        ok, output = _validate_blueprint([
+            _node("my-bt", "bigtable", {
+                "instance_id": "my-bigtable-inst",
+                "display_name": "My Bigtable Instance",
+                "deletion_protection": False,
+                "cluster": {
+                    "cluster_id": "my-bt-c1",
+                    "zone": "us-central1-a",
+                    "num_nodes": 1,
+                    "storage_type": "SSD",
+                },
+            }),
+        ])
+        assert ok, output
+
+    # ── Cloud Tasks Queue ────────────────────────────────────────────
+
+    def test_cloud_task_queue(self):
+        """Cloud Tasks Queue standalone — exercises cloud_task_queue.tf.j2."""
+        ok, output = _validate_blueprint([
+            _node("my-queue", "cloud_task_queue", {
+                "location": "us-central1",
+                "rate_limits": {
+                    "max_dispatches_per_second": 100,
+                    "max_concurrent_dispatches": 10,
+                },
+                "retry_config": {
+                    "max_attempts": 5,
+                    "min_backoff": "1s",
+                    "max_backoff": "60s",
+                    "max_doublings": 4,
+                },
+            }),
+        ])
+        assert ok, output
+
+    # ── PubSub Schema ────────────────────────────────────────────────
+
+    def test_pubsub_schema(self):
+        """PubSub Schema standalone — exercises pubsub_schema.tf.j2."""
+        ok, output = _validate_blueprint([
+            _node("my-schema", "pubsub_schema", {
+                "type": "AVRO",
+                "definition": '{"type": "record", "name": "Event", "fields": [{"name": "id", "type": "string"}]}',
+            }),
+        ])
+        assert ok, output
