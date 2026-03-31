@@ -13,7 +13,8 @@ The platform handles Terraform generation, Cloud Build submission, GCP project p
 - **25 node types** — All Pydantic schemas audited against GCP Terraform provider v7.25.0 (~100 fields added in M001)
 - **UUID-based resource identity** — Every BaseNode has a stable UUID id; depends_on and all refs use IDs; name is display-only (M002)
 - **Typed reference contract** — RESOURCE_REFS declares 34 cross-resource reference fields across 12 node types; validate_refs() catches broken refs; DAG auto-infers dependency edges from refs (M002)
-- **Registry-driven GCP naming** — Per-type gcp_name_source/template/immutable in ComponentDefinition; resolve_gcp_name() derives names consistently across all 22 templates (M002)
+- **Registry-driven GCP naming** — Per-type gcp_name_template in ComponentDefinition; resolve_gcp_name() derives GCP-safe names from resource_id for all 24 types; all TF templates use {{ gcp_name }} (M002, M003)
+- **Resource ID abstraction** — Auto-generated immutable resource_id (8-char hex from UUID) on every BaseNode; config-level ID fields (account_id, dataset_id, instance_id, database_id) removed; users only see display names (M003)
 - **Blueprint-driven pipeline** — Users design node graphs → validation → Terraform generation (Jinja2 templates) → Cloud Build submission → deploy to tenant GCP projects
 - **Terraform generation** — 230 tests pass (47 terraform validate). All node types generate valid HCL.
 - **Core Explorer** — Standalone test UI with ref dropdowns filtered by target type, GCP name previews, immutable-name warnings, and inline rename (M002)
@@ -25,9 +26,10 @@ The platform handles Terraform generation, Cloud Build submission, GCP project p
 
 ### What Needs Work
 - **Service contracts** — Design spec at `docs/specs/service-contract.md` but implementation was reverted (needs to be wired into terraform generator and IAM pipelines)
-- **Dead code archival** — Unused frontend components not yet archived (R006)
+- **Dead code archival** — Insight components archived (M003); other unused frontend components may remain (R006 partially addressed)
 - **3 xfail terraform tests** — Dotted annotation keys, Cloud SQL authorized_networks, VPC connector
 - **Cloud SQL/Firestore templates** — Don't render all new schema fields from M001 audit
+- **Package import paths** — packages.core.* imports broken across packages/api and packages/mcp since package split (need packages.core.core.* paths)
 
 ### What Doesn't Exist Yet
 - **Production GCP project** — no `pl4m-host-prod`, no Terraform applied

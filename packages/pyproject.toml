@@ -30,6 +30,7 @@ testpaths = [
 ]
 markers = ["integration: requires GCP credentials and network"]
 asyncio_mode = "auto"
+collect_ignore_glob = ["archive/*"]
 
 [build-system]
 requires = ["setuptools>=68"]

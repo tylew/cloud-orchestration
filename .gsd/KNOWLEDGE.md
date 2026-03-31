@@ -35,3 +35,6 @@
 - HashiCorp Terraform MCP server is effective for schema audits against provider specs.
 - Package split (monolith → core/api/platform) under `packages/` — each has own `pyproject.toml` and test suite. Core packages now at `packages/core/core/` (note the double `core`).
 - Slice completion artifacts can diverge from code reality if code is reverted post-completion — milestone verification must check actual code state.
+- GCP resource names have per-type constraints (must start with letter, underscore vs hyphen) — naming templates must encode these per-type, not use a universal pattern.
+- `extra='ignore'` on Pydantic config models provides backward compatibility when removing fields from schemas with existing Firestore documents.
+- Root conftest.py with `collect_ignore_glob` prevents pytest from collecting archived code in `archive/`.
