@@ -1,6 +1,6 @@
-"""Core Explorer — standalone web UI for testing the core infra package.
+"""Core Demo — standalone web UI for testing the core infra package.
 
-Run: cd packages/core && PYTHONPATH=. python -m explorer.app
+Run: cd packages/core && PYTHONPATH=. python -m demo.app
 """
 
 import json
@@ -22,7 +22,7 @@ from core.terraform.naming import resolve_gcp_name
 
 log = logging.getLogger(__name__)
 
-app = FastAPI(title="Core Explorer", version="0.1.0")
+app = FastAPI(title="Core Demo", version="0.1.0")
 
 STATIC_DIR = Path(__file__).parent / "static"
 

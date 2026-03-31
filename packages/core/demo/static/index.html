@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Core Explorer</title>
+<title>Core Demo</title>
 <style>
   :root {
     --bg: #0f1117; --bg2: #1a1d27; --bg3: #242833;
@@ -15,25 +15,25 @@
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
 
   /* Sidebar — resource palette */
-  #sidebar { width: 260px; background: var(--bg2); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
-  #sidebar h2 { padding: 16px; font-size: 14px; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  #sidebar { width: 260px; background: var(--bg2); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+  #sidebar h2 { padding: 16px; font-size: 14px; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--border); }
   #palette { flex: 1; overflow-y: auto; padding: 8px; }
   .cat-label { font-size: 11px; color: var(--text2); padding: 8px 8px 4px; text-transform: uppercase; letter-spacing: 0.5px; }
   .type-btn { display: block; width: 100%; text-align: left; background: none; border: 1px solid transparent; color: var(--text); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 13px; margin: 1px 0; }
   .type-btn:hover { background: var(--bg3); border-color: var(--border); }
 
   /* Main area */
-  #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+  #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 
   /* Tabs */
-  #tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--bg2); flex-shrink: 0; }
+  #tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--bg2); }
   .tab { padding: 10px 20px; cursor: pointer; color: var(--text2); font-size: 13px; border-bottom: 2px solid transparent; }
   .tab:hover { color: var(--text); }
   .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
 
-  /* Panels — fill remaining height, scroll internally */
-  .panel { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 20px; display: none; }
-  .panel.active { display: block; }
+  /* Panels */
+  .panel { flex: 1; overflow: auto; padding: 20px; display: none; }
+  .panel.active { display: flex; flex-direction: column; gap: 16px; }
 
   /* Blueprint panel */
   #blueprint-nodes { display: flex; flex-direction: column; gap: 8px; }
@@ -51,40 +51,27 @@
   .add-dep-select { font-size: 12px; background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 4px; padding: 2px 6px; }
 
   /* Validation panel */
-  .issue { padding: 8px 12px; border-radius: 6px; font-size: 13px; margin-bottom: 8px; }
+  .issue { padding: 8px 12px; border-radius: 6px; font-size: 13px; }
   .issue.error { background: rgba(248,113,113,0.1); border-left: 3px solid var(--red); }
   .issue.warning { background: rgba(251,191,36,0.1); border-left: 3px solid var(--yellow); }
   .issue .node-name { color: var(--accent); font-weight: 600; }
   .valid-badge { font-size: 16px; padding: 12px; background: rgba(74,222,128,0.1); border-radius: 8px; text-align: center; color: var(--green); }
 
   /* Terraform panel */
-  .tf-file { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 12px; }
+  .tf-file { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
   .tf-file-header { padding: 8px 12px; background: var(--bg3); font-size: 12px; color: var(--text2); font-family: var(--mono); border-bottom: 1px solid var(--border); }
   .tf-file pre { padding: 12px; font-size: 12px; font-family: var(--mono); overflow-x: auto; white-space: pre; line-height: 1.5; }
 
-  /* Config dialog — overlay */
+
+  /* Config dialog */
   #config-dialog { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 100; }
   #config-dialog.open { display: flex; }
-
-  /* Config dialog — modal box with sticky footer */
-  #config-dialog-inner {
-    background: var(--bg2); border: 1px solid var(--border); border-radius: 12px;
-    width: 500px; max-height: 80vh;
-    display: flex; flex-direction: column; overflow: hidden;
-  }
-  #config-dialog-header { padding: 20px 24px 0; flex-shrink: 0; }
-  #config-dialog-header h3 { font-size: 16px; }
-  #config-dialog-body { flex: 1; overflow-y: auto; padding: 8px 24px 16px; }
-  #config-dialog-body label { display: block; font-size: 12px; color: var(--text2); margin-top: 10px; }
-  #config-dialog-body input, #config-dialog-body select { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 4px; padding: 6px 8px; font-size: 13px; margin-top: 4px; }
-  #config-dialog-footer {
-    padding: 16px 24px; flex-shrink: 0;
-    border-top: 1px solid var(--border); background: var(--bg2);
-    display: flex; gap: 8px; justify-content: flex-end;
-  }
-
+  #config-dialog-inner { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 24px; width: 500px; max-height: 80vh; overflow-y: auto; }
+  #config-dialog-inner h3 { margin-bottom: 16px; }
+  #config-dialog-inner label { display: block; font-size: 12px; color: var(--text2); margin-top: 10px; }
+  #config-dialog-inner input, #config-dialog-inner select { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 4px; padding: 6px 8px; font-size: 13px; margin-top: 4px; }
+  #config-dialog-inner .btn-row { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
   .btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; }
-  .btn:hover { filter: brightness(1.1); }
   .btn-primary { background: var(--accent); color: #fff; }
   .btn-secondary { background: var(--bg3); color: var(--text); }
 
@@ -113,15 +100,11 @@
   <div id="panel-terraform" class="panel"></div>
 </div>
 
-<div id="config-dialog" onclick="if(event.target===this)closeConfigDialog()">
+<div id="config-dialog">
   <div id="config-dialog-inner">
-    <div id="config-dialog-header">
-      <h3 id="config-dialog-title">Configure Resource</h3>
-    </div>
-    <div id="config-dialog-body">
-      <form id="config-form"></form>
-    </div>
-    <div id="config-dialog-footer">
+    <h3 id="config-dialog-title">Configure Resource</h3>
+    <form id="config-form"></form>
+    <div class="btn-row">
       <button class="btn btn-secondary" type="button" onclick="closeConfigDialog()">Cancel</button>
       <button class="btn btn-primary" type="button" onclick="submitConfigDialog()">Add Resource</button>
     </div>
@@ -132,15 +115,8 @@
 // ── State ───────────────────────────────────────────────────────────
 let types = {};
 let blueprint = { global: { project_id: "my-project", region: "us-central1", environment: "dev" }, nodes: [] };
-let nodeEnriched = {};
+let nodeEnriched = {};  // name -> { id, resource_id, gcp_name }
 let pendingType = null;
-
-// ── Keyboard ────────────────────────────────────────────────────────
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && document.getElementById('config-dialog').classList.contains('open')) {
-    closeConfigDialog();
-  }
-});
 
 // ── Init ────────────────────────────────────────────────────────────
 async function init() {
@@ -159,6 +135,7 @@ function renderPalette() {
     if (!cats[info.category]) cats[info.category] = [];
     cats[info.category].push({ type, ...info });
   }
+  // Order: Compute, Data, Messaging, Network, Security, Storage, External, Identity
   const order = ['Compute','Data','Messaging','Network','Security','Storage','External','Identity'];
   let html = '';
   for (const cat of order) {
@@ -183,6 +160,7 @@ function addResource(type) {
 
   let html = `<label>Name</label><input id="cfg-name" value="" placeholder="My ${info.label}" autofocus>`;
 
+  // Render form fields from JSON schema — top-level only
   for (const [key, prop] of Object.entries(props)) {
     const req = required.has(key) ? ' *' : '';
     const def = prop.default !== undefined ? prop.default : '';
@@ -197,6 +175,7 @@ function addResource(type) {
     } else if (prop.type === 'string') {
       html += `<label>${key}${req}</label><input data-key="${key}" value="${def}" placeholder="${desc || key}">`;
     }
+    // Skip objects, arrays — user can edit JSON directly after adding
   }
 
   document.getElementById('config-form').innerHTML = html;
@@ -348,12 +327,12 @@ async function runTfValidate() {
     const res = await fetch('/api/terraform/validate', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(blueprint) });
     const data = await res.json();
     if (data.valid) {
-      result.innerHTML = `<span style="color:var(--green)">✓ ${escHtml(data.diagnostics || 'Valid')}</span>`;
+      result.innerHTML = `<span style="color:var(--green,#4ade80)">✓ ${escHtml(data.diagnostics || 'Valid')}</span>`;
     } else {
-      result.innerHTML = `<span style="color:var(--red)">✗ Failed</span><pre style="margin-top:6px;font-size:11px;color:var(--red);white-space:pre-wrap">${escHtml(data.diagnostics || data.detail || 'Unknown error')}</pre>`;
+      result.innerHTML = `<span style="color:var(--red,#f87171)">✗ Failed</span><pre style="margin-top:6px;font-size:11px;color:var(--red,#f87171);white-space:pre-wrap">${escHtml(data.diagnostics || data.detail || 'Unknown error')}</pre>`;
     }
   } catch(e) {
-    result.innerHTML = `<span style="color:var(--red)">✗ ${escHtml(e.message)}</span>`;
+    result.innerHTML = `<span style="color:var(--red,#f87171)">✗ ${escHtml(e.message)}</span>`;
   }
   btn.disabled = false; btn.textContent = '▶ terraform validate';
 }
