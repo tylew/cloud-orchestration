@@ -12,6 +12,7 @@ from core.schemas.configs.bigquery import BqTable, BigQueryTableConfig
 from core.schemas.configs.cloud_sql import SqlDatabase, CloudSqlDatabaseConfig
 from core.schemas.enums import CHILD_PARENT_MAP
 from core.registry import REGISTRY
+from core.terraform.naming import resolve_gcp_name
 from core.terraform.resolver import resolve_node_ref, topological_sort
 from core.validation import reconstruct_collection_tree
 
@@ -450,6 +451,9 @@ def generate_terraform(envelope: Envelope) -> dict[str, str]:
             api_deps = _NODE_TYPE_APIS.get(ntype, [])
             api_dep_refs = [f'google_project_service.{a.replace(".", "-").rstrip("-")}' for a in api_deps]
 
+            # Compute GCP-safe name from registry naming template
+            gcp_name = resolve_gcp_name(node, global_cfg.environment)
+
             block = tmpl.render(
                 node=node,
                 config=node.config,
@@ -457,6 +461,7 @@ def generate_terraform(envelope: Envelope) -> dict[str, str]:
                 resolve_ref=resolve_ref,
                 defn=defn,
                 api_depends_on=api_dep_refs,
+                gcp_name=gcp_name,
                 **extra_ctx,
             )
             # Inject depends_on for API enablement at the end of the resource block

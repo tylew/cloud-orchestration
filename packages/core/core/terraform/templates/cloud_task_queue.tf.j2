@@ -1,5 +1,5 @@
 resource "google_cloud_tasks_queue" "{{ node.name }}" {
-  name     = "${var.environment}-{{ node.name }}"
+  name     = "{{ gcp_name }}"
   location = {{ resolve_ref(config.location) if config.location.startswith('node:') else '"' ~ config.location ~ '"' }}
   project  = var.gcp_project_id
 {% if config.desired_state %}

@@ -55,7 +55,7 @@ This task builds the schema foundation: BaseNode gets UUID-based identity, the r
   - Estimate: 1h
   - Files: packages/core/core/schemas/base.py, packages/core/core/registry.py, packages/core/core/terraform/naming.py, packages/core/tests/test_naming.py
   - Verify: cd packages/core && python -m pytest tests/test_naming.py -x -v
-- [ ] **T02: Wire resolve_gcp_name into generator and rewrite all TF templates** — ## Why
+- [x] **T02: Wired resolve_gcp_name into TF generator and replaced all ad-hoc name patterns in 19 templates with {{ gcp_name }}** — ## Why
 This is the core integration task: the generator must pass `gcp_name` into every template's context, and all 22 templates must use `{{ gcp_name }}` for the GCP resource name attribute instead of ad-hoc patterns. TF resource labels (after `resource "type"`) stay as `node.name`.
 
 ## Steps

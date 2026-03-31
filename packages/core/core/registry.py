@@ -43,7 +43,7 @@ REGISTRY: dict[NodeType, ComponentDefinition] = {
         is_compute=False,
         config_model=TYPE_TO_CONFIG[NodeType.VPC],
         terraform_resource="google_compute_network",
-        gcp_name_template="{rid}",
+        gcp_name_template="vpc-{rid}",
         default_outputs=(
             {"name": "self_link", "type": "self_link"},
             {"name": "id", "type": "connection_string"},
@@ -57,7 +57,7 @@ REGISTRY: dict[NodeType, ComponentDefinition] = {
         is_compute=False,
         config_model=TYPE_TO_CONFIG[NodeType.SUBNET],
         terraform_resource="google_compute_subnetwork",
-        gcp_name_template="{rid}",
+        gcp_name_template="sn-{rid}",
         default_outputs=(
             {"name": "self_link", "type": "self_link"},
             {"name": "id", "type": "connection_string"},
@@ -71,7 +71,7 @@ REGISTRY: dict[NodeType, ComponentDefinition] = {
         is_compute=False,
         config_model=TYPE_TO_CONFIG[NodeType.VPC_CONNECTOR],
         terraform_resource="google_vpc_access_connector",
-        gcp_name_template="{rid}",
+        gcp_name_template="conn-{rid}",
         default_outputs=(
             {"name": "id", "type": "connection_string"},
             {"name": "self_link", "type": "self_link"},
@@ -87,7 +87,7 @@ REGISTRY: dict[NodeType, ComponentDefinition] = {
         terraform_resource="google_secret_manager_secret",
         iam_scope="resource",
         iam_terraform_resource="google_secret_manager_secret_iam_member",
-        gcp_name_template="{rid}",
+        gcp_name_template="sc-{rid}",
         default_outputs=(
             {"name": "secret_id", "type": "connection_string"},
             {"name": "version", "type": "connection_string"},

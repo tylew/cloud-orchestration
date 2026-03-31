@@ -1,5 +1,5 @@
 resource "google_pubsub_subscription" "{{ node.name }}" {
-  name                         = "${var.environment}-{{ node.name }}"
+  name                         = "{{ gcp_name }}"
   topic                        = {{ resolve_ref(config.topic) }}
   ack_deadline_seconds         = {{ config.ack_deadline_seconds }}
   message_retention_duration   = "{{ config.message_retention_duration }}"

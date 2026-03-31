@@ -1,5 +1,5 @@
 resource "google_firestore_database" "{{ node.name }}" {
-  name                        = "{{ config.database_id }}"
+  name                        = "{{ gcp_name }}"
   location_id                 = "{{ config.location_id }}"
   type                        = "{{ config.type }}"
   concurrency_mode            = "{{ config.concurrency_mode }}"

@@ -51,6 +51,8 @@ def _node(node_type: NodeType, rid: str = "ab12cd34") -> BaseNode:
         NodeType.BIGQUERY: {"dataset_id": "ds"},
         NodeType.BIGTABLE: {"instance_id": "i", "cluster": {"cluster_id": "c", "zone": "z"}},
         NodeType.VPC: {"auto_create_subnetworks": False},
+        NodeType.SUBNET: {"ip_cidr_range": "10.0.0.0/24", "region": "us-central1", "network": "my-vpc"},
+        NodeType.VPC_CONNECTOR: {"ip_cidr_range": "10.8.0.0/28", "region": "us-central1"},
         NodeType.CLOUD_SQL_DATABASE: {"parentRef": "p", "name": "n"},
         NodeType.CLOUD_SQL_TABLE: {"parentRef": "p", "name": "n"},
         NodeType.THIRD_PARTY_API: {"provider": "x", "base_url": "http://x"},
@@ -81,7 +83,10 @@ def test_firestore_default():
 
 
 def test_bare_rid():
-    assert resolve_gcp_name(_node(NodeType.VPC), "dev") == "ab12cd34"
+    """VPC, subnet, vpc_connector use letter-prefixed rid templates."""
+    assert resolve_gcp_name(_node(NodeType.VPC), "dev") == "vpc-ab12cd34"
+    assert resolve_gcp_name(_node(NodeType.SUBNET), "dev") == "sn-ab12cd34"
+    assert resolve_gcp_name(_node(NodeType.VPC_CONNECTOR), "dev") == "conn-ab12cd34"
 
 
 def test_no_template_returns_empty():

@@ -1,5 +1,5 @@
 resource "google_storage_bucket" "{{ node.name }}" {
-  name                        = "${var.environment}-{{ node.name }}"
+  name                        = "{{ gcp_name }}"
   location                    = "{{ config.location }}"
   storage_class               = "{{ config.storage_class }}"
   uniform_bucket_level_access = {{ config.uniform_bucket_level_access | lower }}

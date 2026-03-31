@@ -1,5 +1,5 @@
 resource "google_bigtable_instance" "{{ node.name }}" {
-  name                = "{{ config.instance_id }}"
+  name                = "{{ gcp_name }}"
 {% if config.display_name %}
   display_name        = "{{ config.display_name }}"
 {% endif %}

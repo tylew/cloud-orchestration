@@ -1,5 +1,5 @@
 resource "google_pubsub_topic" "{{ node.name }}" {
-  name                       = "${var.environment}-{{ node.name }}"
+  name                       = "{{ gcp_name }}"
   project                    = var.gcp_project_id
 {% if config.message_retention_duration %}
   message_retention_duration = "{{ config.message_retention_duration }}"
