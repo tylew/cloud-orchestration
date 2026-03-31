@@ -24,10 +24,18 @@ resource "google_sql_database_instance" "{{ tf_label }}" {
 {% if config.ip_configuration.private_network %}
       private_network = {{ resolve_ref(config.ip_configuration.private_network) }}
 {% endif %}
-      require_ssl     = {{ config.ip_configuration.require_ssl | lower }}
 {% if config.ip_configuration.ssl_mode %}
       ssl_mode        = "{{ config.ip_configuration.ssl_mode }}"
 {% endif %}
+{% for net in config.ip_configuration.authorized_networks %}
+      authorized_networks {
+        name  = "{{ net.name }}"
+        value = "{{ net.value }}"
+{% if net.expiration_time %}
+        expiration_time = "{{ net.expiration_time }}"
+{% endif %}
+      }
+{% endfor %}
     }
 {% endif %}
 

@@ -37,11 +37,11 @@ terraform {
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = ">= 5.0"
+      version = ">= 6.0"
     }
     google-beta = {
       source  = "hashicorp/google-beta"
-      version = ">= 5.0"
+      version = ">= 6.0"
     }
   }
 }
@@ -362,7 +362,6 @@ class TestTerraformValidateRichConfigs:
         ])
         assert ok, output
 
-    @pytest.mark.xfail(reason="TEMPLATE BUG: annotation keys with dots rendered unquoted in cloud_run.tf.j2")
     def test_cloud_run_annotations_dotted_keys(self):
         """Cloud Run annotations with dotted keys — exposes template quoting bug."""
         ok, output = _validate_blueprint([
@@ -431,7 +430,6 @@ class TestTerraformValidateRichConfigs:
 
     # ── Cloud SQL ────────────────────────────────────────────────────
 
-    @pytest.mark.xfail(reason="TEMPLATE BUG: cloud_sql.tf.j2 renders require_ssl which is removed in google provider >= 6.x, and missing authorized_networks block")
     def test_cloud_sql_authorized_networks(self):
         """Cloud SQL with ip_configuration.authorized_networks.
 
@@ -486,7 +484,6 @@ class TestTerraformValidateRichConfigs:
 
     # ── VPC Connector ────────────────────────────────────────────────
 
-    @pytest.mark.xfail(reason="TEMPLATE BUG: vpc_connector.tf.j2 renders both throughput and instances unconditionally — they conflict in google provider")
     def test_vpc_connector(self):
         """VPC Connector standalone — exercises vpc_connector.tf.j2.
 

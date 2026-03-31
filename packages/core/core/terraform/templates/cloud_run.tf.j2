@@ -24,7 +24,7 @@ resource "google_cloud_run_v2_service" "{{ tf_label }}" {
 {% if config.labels %}
   labels = {
 {% for k, v in config.labels.items() %}
-    {{ k }} = "{{ v }}"
+    "{{ k }}" = "{{ v }}"
 {% endfor %}
   }
 {% endif %}
@@ -32,7 +32,7 @@ resource "google_cloud_run_v2_service" "{{ tf_label }}" {
 {% if config.annotations %}
   annotations = {
 {% for k, v in config.annotations.items() %}
-    {{ k }} = "{{ v }}"
+    "{{ k }}" = "{{ v }}"
 {% endfor %}
   }
 {% endif %}

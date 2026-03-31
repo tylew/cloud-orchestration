@@ -110,8 +110,8 @@ def terraform_validate(payload: dict):
         # Write provider + variables boilerplate
         (Path(tmpdir) / "provider.tf").write_text(
             'terraform {\n  required_providers {\n'
-            '    google = { source = "hashicorp/google"; version = ">= 5.0" }\n'
-            '    google-beta = { source = "hashicorp/google-beta"; version = ">= 5.0" }\n'
+            '    google = { source = "hashicorp/google"; version = ">= 6.0" }\n'
+            '    google-beta = { source = "hashicorp/google-beta"; version = ">= 6.0" }\n'
             '  }\n}\n'
         )
         (Path(tmpdir) / "variables.tf").write_text(

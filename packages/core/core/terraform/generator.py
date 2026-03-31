@@ -561,7 +561,7 @@ def _render_provider(env: Environment, global_cfg) -> str:
         '  required_providers {\n'
         '    google = {\n'
         '      source  = "hashicorp/google"\n'
-        '      version = ">= 5.0"\n'
+        '      version = ">= 6.0"\n'
         '    }\n'
         '  }\n'
         '}\n\n'

@@ -15,10 +15,13 @@ resource "google_vpc_access_connector" "{{ tf_label }}" {
 {% endif %}
   }
 {% endif %}
-  min_throughput = {{ config.min_throughput }}
-  max_throughput = {{ config.max_throughput }}
+{% if config.machine_type and config.machine_type != 'e2-micro' %}
   machine_type   = "{{ config.machine_type }}"
   min_instances  = {{ config.min_instances }}
   max_instances  = {{ config.max_instances }}
+{% else %}
+  min_throughput = {{ config.min_throughput }}
+  max_throughput = {{ config.max_throughput }}
+{% endif %}
   project        = var.gcp_project_id
 }
