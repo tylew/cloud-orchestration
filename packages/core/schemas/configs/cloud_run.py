@@ -1,5 +1,3 @@
-from typing import Literal
-
 from pydantic import BaseModel
 
 from .env_vars import EnvVarEntry
@@ -144,6 +142,8 @@ class CloudRunNodeSelector(BaseModel):
     accelerator: str
 
 
+# ── Eventarc ─────────────────────────────────────────────────────────
+
 class EventarcMatchingCriteria(BaseModel):
     attribute: str
     value: str
@@ -161,64 +161,9 @@ class EventarcTriggerConfig(BaseModel):
     location: str | None = None
 
 
-class FieldRef(BaseModel):
-    """Typed reference to a field on a storage node."""
-    path: str  # e.g., "users.email" or "users/{id}/orders.total"
-    access: str = "read"  # "read" | "write" | "read_write"
-
-
-class WorkflowDbRef(BaseModel):
-    """Structured reference to a database node with field-level detail (per D-08)."""
-    node_name: str
-    operation: str = ""  # "read" | "write" | "read_write"
-    collections: list[str] = []  # Firestore collections or SQL tables
-    fields: list[str | FieldRef] = []  # Field-level detail for schema contracts
-    description: str = ""
-
-
-class WorkflowSecretRef(BaseModel):
-    """Structured reference to a secret mapped to env var (per D-08)."""
-    secret_node: str
-    env_var: str
-    description: str = ""
-
-
-class WorkflowTaskDispatch(BaseModel):
-    """Structured task dispatch to Cloud Tasks queue (per D-08)."""
-    queue_node: str
-    payload_description: str = ""
-
-
-class WorkflowPubSubRef(BaseModel):
-    """Structured pub/sub messaging reference (per D-08)."""
-    topic_node: str
-    direction: str = "publish"  # "publish" | "subscribe"
-    message_description: str = ""
-
-
-class WorkflowInvokeRef(BaseModel):
-    """Structured invocation of another compute node."""
-    target_node: str
-    description: str = ""
-
-
-class WorkflowDefinition(BaseModel):
-    """Comprehensive behavioral interface for compute nodes (per D-07).
-
-    Structured part covers typed references to other resources.
-    Free-form part captures business logic for the AI code agent (per D-10).
-    """
-    description: str = ""
-    db_refs: list[WorkflowDbRef] = []
-    secret_refs: list[WorkflowSecretRef] = []
-    task_dispatches: list[WorkflowTaskDispatch] = []
-    pubsub_refs: list[WorkflowPubSubRef] = []
-    invoke_refs: list[WorkflowInvokeRef] = []
-    behavior: str = ""  # Free-form behavioral logic (per D-10)
-
+# ── CloudRunConfig ───────────────────────────────────────────────────
 
 class CloudRunConfig(BaseModel):
-    mode: Literal["workflow", "code_editor", "image_url"] | None = None
     # --- Service-level fields ---
     description: str = ""
     image: str = ""
@@ -273,5 +218,3 @@ class CloudRunConfig(BaseModel):
     readiness_probe: CloudRunReadinessProbe | None = None
     # --- Eventarc ---
     eventarc_triggers: list[EventarcTriggerConfig] = []
-    # --- Workflow (platform-specific) ---
-    workflow: WorkflowDefinition | None = None

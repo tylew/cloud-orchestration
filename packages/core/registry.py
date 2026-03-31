@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from pydantic import BaseModel
 
-from packages.core.schemas.enums import NodeType, ActionType, ACTION_VALID_TARGETS, COMPUTE_TYPES
+from packages.core.schemas.enums import NodeType, COMPUTE_TYPES
 from packages.core.schemas.configs import TYPE_TO_CONFIG
 
 
@@ -345,7 +345,3 @@ def get_config_model(node_type: NodeType) -> type[BaseModel] | None:
 
 def is_compute(node_type: NodeType) -> bool:
     return node_type in COMPUTE_TYPES
-
-
-def get_valid_targets(action_type: ActionType) -> set[NodeType]:
-    return ACTION_VALID_TARGETS.get(action_type, set())

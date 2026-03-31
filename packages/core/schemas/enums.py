@@ -24,20 +24,11 @@ class NodeType(StrEnum):
     EXTERNAL_LB = "external_lb"
     CLOUD_DNS = "cloud_dns"
     THIRD_PARTY_API = "third_party_api"
-    # Child data node types (Phase 5)
+    # Child data node types
     FIRESTORE_COLLECTION = "firestore_collection"
     BIGQUERY_TABLE = "bigquery_table"
     CLOUD_SQL_DATABASE = "cloud_sql_database"
     CLOUD_SQL_TABLE = "cloud_sql_table"
-
-
-class ActionType(StrEnum):
-    READ = "Read"
-    WRITE = "Write"
-    INVOKE = "Invoke"
-    EMIT = "Emit"
-    ENQUEUE = "Enqueue"
-    DESCRIBE = "Describe"
 
 
 class Protocol(StrEnum):
@@ -70,27 +61,6 @@ COMPUTE_TYPES: set[NodeType] = {
     NodeType.CLOUD_RUN,
     NodeType.CLOUD_RUN_JOB,
     NodeType.CLOUD_FUNCTION,
-}
-
-# Types that can carry an internalGraph (behavioral steps).
-# All compute types own their workflow definition directly.
-GRAPH_TYPES: set[NodeType] = {NodeType.CLOUD_RUN, NodeType.CLOUD_RUN_JOB, NodeType.CLOUD_FUNCTION}
-
-# §3 action validation table
-ACTION_VALID_TARGETS: dict[ActionType, set[NodeType]] = {
-    ActionType.READ: {
-        NodeType.CLOUD_SQL, NodeType.FIRESTORE, NodeType.BIGQUERY,
-        NodeType.BIGTABLE, NodeType.GCS_BUCKET,
-    },
-    ActionType.WRITE: {
-        NodeType.CLOUD_SQL, NodeType.FIRESTORE, NodeType.BIGQUERY,
-        NodeType.BIGTABLE, NodeType.GCS_BUCKET,
-    },
-    ActionType.INVOKE: {
-        NodeType.CLOUD_RUN, NodeType.CLOUD_FUNCTION, NodeType.THIRD_PARTY_API,
-    },
-    ActionType.EMIT: {NodeType.PUBSUB_TOPIC},
-    ActionType.ENQUEUE: {NodeType.CLOUD_TASK_QUEUE},
 }
 
 # Child node types that are embedded in parent TF templates (empty -- all child types

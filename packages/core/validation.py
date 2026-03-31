@@ -12,7 +12,6 @@ from pydantic import BaseModel
 from packages.core.schemas.base import Envelope, BaseNode
 from packages.core.schemas.enums import CHILD_PARENT_MAP
 from packages.core.dag import BlueprintDAG
-from packages.core.field_resolution import resolve_field_ref
 
 
 @dataclass
@@ -358,69 +357,8 @@ def validate_blueprint(envelope: Envelope) -> list[ValidationIssue]:
                 if ref_parts[0] not in node_map:
                     issues.append(ValidationIssue("error", node.name, f"input source references unknown node: {ref_parts[0]!r}"))
 
-        # internalGraph validation
-        if node.internalGraph:
-            for step in node.internalGraph.steps:
-                if step.targetNodeName not in node_map:
-                    issues.append(ValidationIssue("error", node.name, f"internalGraph step {step.id!r} references unknown node: {step.targetNodeName!r}"))
-                elif node_map[step.targetNodeName].type != step.targetNodeType:
-                    issues.append(ValidationIssue(
-                        "error", node.name,
-                        f"internalGraph step {step.id!r}: targetNodeType {step.targetNodeType!r} "
-                        f"doesn't match actual type {node_map[step.targetNodeName].type!r}"
-                    ))
-
     # Reconstruct collection tree from flat nodes before field resolution
     reconstruct_collection_tree(envelope.nodes)
-
-    # Field-level reference validation (Phase 2 -- GRAPH-03)
-    STORAGE_TYPES = {"firestore", "cloud_sql", "bigquery"}
-
-    for node in envelope.nodes:
-        if not node.internalGraph:
-            continue
-        for step in node.internalGraph.steps:
-            target = node_map.get(step.targetNodeName)
-            if not target or target.type not in STORAGE_TYPES:
-                continue
-            # Check step.details for field references
-            details = step.details
-            if details is None:
-                continue
-            fields_str = details.fields or ""
-            if isinstance(fields_str, str) and fields_str.strip():
-                field_names = [f.strip() for f in fields_str.split(",") if f.strip()]
-                for field_name in field_names:
-                    # Build full path: collection.field for firestore, db.table.field for SQL
-                    collection = details.collection or ""
-                    subcollection = details.subcollection or ""
-                    if target.type == "firestore":
-                        if subcollection:
-                            path = f"{collection}/{{id}}/{subcollection}.{field_name}"
-                        elif collection:
-                            path = f"{collection}.{field_name}"
-                        else:
-                            path = field_name
-                    elif target.type == "cloud_sql":
-                        database = details.database or ""
-                        table = details.table or ""
-                        path = f"{database}.{table}.{field_name}" if database and table else field_name
-                    elif target.type == "bigquery":
-                        table = details.table or ""
-                        path = f"{table}.{field_name}" if table else field_name
-                    else:
-                        continue
-
-                    # Config is always a BaseModel -- convert to dict for resolution
-                    config = target.config.model_dump()
-
-                    if not resolve_field_ref(target.type, config, path):
-                        issues.append(ValidationIssue(
-                            "error",
-                            node.name,
-                            f"Field '{path}' not found on {target.name}. "
-                            f"The field may have been renamed or deleted."
-                        ))
 
     # Required field validation per resource type (D-20, D-21)
     issues.extend(validate_required_fields(envelope.nodes))

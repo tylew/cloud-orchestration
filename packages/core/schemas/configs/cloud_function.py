@@ -2,7 +2,6 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-from .cloud_run import WorkflowDefinition
 from .env_vars import EnvVarEntry
 
 
@@ -113,4 +112,3 @@ class CloudFunctionConfig(BaseModel):
     build_config: CfBuildConfig | None = None
     # --- Platform-specific ---
     mode: Literal["workflow", "code_editor", "image_url"] | None = None
-    workflow: WorkflowDefinition | None = None

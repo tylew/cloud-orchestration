@@ -46,8 +46,9 @@ def get_iam_role(action_type: str, target_node_type: str) -> str | None:
 def infer_iam_roles(node_data: dict, all_nodes: list[dict]) -> set[str]:
     """Infer required IAM roles from a node's dependency graph.
 
-    Walks internalGraph steps and depends_on references to build the set
-    of GCP IAM roles the node's service account needs.
+    Currently infers implicit Read roles from depends_on references.
+    Will be extended to consume ServiceContract when implemented
+    (see docs/specs/service-contract.md).
     """
     roles: set[str] = set()
 
@@ -60,31 +61,13 @@ def infer_iam_roles(node_data: dict, all_nodes: list[dict]) -> set[str]:
     if node_data.get("type") not in {t.value for t in COMPUTE_TYPES}:
         return roles
 
-    # 1. Walk internalGraph steps for explicit action -> target mappings
-    internal_graph = node_data.get("internalGraph")
-    if internal_graph:
-        steps = internal_graph.get("steps", [])
-        for step in steps:
-            action = step.get("actionType", "")
-            target_type = step.get("targetNodeType", "")
-            if action and target_type:
-                role = get_iam_role(action, target_type)
-                if role:
-                    roles.add(role)
-
-    # 2. For depends_on refs without explicit steps, infer implicit Read
+    # For depends_on refs, infer implicit Read role
     depends_on = node_data.get("depends_on", [])
-    step_targets = set()
-    if internal_graph:
-        for step in internal_graph.get("steps", []):
-            step_targets.add(step.get("targetNodeName", ""))
-
     for dep_name in depends_on:
-        if dep_name not in step_targets:
-            target_type = node_type_by_name.get(dep_name)
-            if target_type:
-                role = get_iam_role("Read", target_type)
-                if role:
-                    roles.add(role)
+        target_type = node_type_by_name.get(dep_name)
+        if target_type:
+            role = get_iam_role("Read", target_type)
+            if role:
+                roles.add(role)
 
     return roles

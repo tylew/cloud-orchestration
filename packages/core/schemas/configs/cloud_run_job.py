@@ -7,7 +7,6 @@ from .cloud_run import (
     CloudRunNetworkInterface,
     CloudRunVolume, CloudRunVolumeMount, CloudRunBinaryAuth,
     CloudRunProbe, CloudRunNodeSelector,
-    WorkflowDefinition,
 )
 from .env_vars import EnvVarEntry
 
@@ -64,4 +63,3 @@ class CloudRunJobConfig(BaseModel):
     launch_stage: str | None = None
     binary_authorization: CloudRunBinaryAuth | None = None
     scheduler_triggers: list[SchedulerTriggerConfig] = []
-    workflow: WorkflowDefinition | None = None

@@ -88,32 +88,12 @@ class TestInferIamRoles:
         roles = infer_iam_roles(node, all_nodes)
         assert "roles/datastore.user" in roles
 
-    def test_compute_with_multiple_steps(self):
-        """Multiple steps should produce multiple roles."""
+    def test_compute_with_multiple_deps(self):
+        """Multiple depends_on should produce multiple roles."""
         node = {
             "name": "worker",
             "type": "cloud_run_job",
             "depends_on": ["my-db", "my-topic"],
-            "internalGraph": {
-                "steps": [
-                    {
-                        "id": "s1",
-                        "order": 1,
-                        "actionType": "Write",
-                        "targetNodeName": "my-db",
-                        "targetNodeType": "cloud_sql",
-                        "purpose": "Write results",
-                    },
-                    {
-                        "id": "s2",
-                        "order": 2,
-                        "actionType": "Emit",
-                        "targetNodeName": "my-topic",
-                        "targetNodeType": "pubsub_topic",
-                        "purpose": "Emit event",
-                    },
-                ]
-            },
         }
         all_nodes = [
             node,
@@ -122,7 +102,8 @@ class TestInferIamRoles:
         ]
         roles = infer_iam_roles(node, all_nodes)
         assert "roles/cloudsql.client" in roles
-        assert "roles/pubsub.publisher" in roles
+        # depends_on infers implicit Read — pubsub topic Read is not mapped
+        # (publisher role will come from ServiceContract in the future)
 
     def test_no_internal_graph_returns_empty(self):
         """Non-compute node with no steps returns no roles."""
