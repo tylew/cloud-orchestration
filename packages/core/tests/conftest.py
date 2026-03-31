@@ -32,7 +32,7 @@ def minimal_envelope_data():
         "global": _global(),
         "nodes": [
             _node("my-vpc", "vpc", {"auto_create_subnetworks": False}),
-            _node("my-sa", "service_account", {"account_id": "my-sa"}),
+            _node("my-sa", "service_account", {}),
             _node("my-service", "cloud_run", {
                 "image": "gcr.io/test/image:latest",
                 "service_account": "my-sa",
@@ -61,7 +61,7 @@ def complex_envelope_data():
                 "region": "us-central1",
                 "network": "my-vpc",
             }, depends_on=["my-vpc"]),
-            _node("my-sa", "service_account", {"account_id": "my-sa"}),
+            _node("my-sa", "service_account", {}),
             _node("my-db", "cloud_sql", {
                 "database_version": "POSTGRES_15",
                 "tier": "db-f1-micro",
@@ -105,7 +105,7 @@ def output_test_envelope_data():
         "global": _global(),
         "nodes": [
             _node("my-vpc", "vpc", {"auto_create_subnetworks": False}),
-            _node("my-sa", "service_account", {"account_id": "my-sa"}),
+            _node("my-sa", "service_account", {}),
             _node("my-db", "cloud_sql", {
                 "database_version": "POSTGRES_15",
                 "tier": "db-f1-micro",

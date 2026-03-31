@@ -54,7 +54,6 @@ class TestServiceAccountCreation:
         node = {"name": "api", "type": "cloud_run", "depends_on": []}
         result = auto_provision_for_node(node, [])
         sa = [n for n in result["created"] if n["type"] == "service_account"][0]
-        assert sa["config"]["account_id"] == "sa-api"
         assert sa["depends_on"] == []
         assert sa["auto_provisioned"] is True
 

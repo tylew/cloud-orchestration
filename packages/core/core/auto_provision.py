@@ -87,7 +87,7 @@ def _create_sa_node(compute_name: str) -> dict:
         "name": f"sa-{compute_name}",
         "type": "service_account",
         "slug": f"sa-{compute_name}",
-        "config": {"account_id": f"sa-{compute_name}"},
+        "config": {},
         "depends_on": [],
         "auto_provisioned": True,
     }

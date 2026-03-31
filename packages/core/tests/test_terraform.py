@@ -84,7 +84,7 @@ class TestEnvVarsTerraform:
         data = {
             "global": {"project_id": "test", "region": "us-central1", "environment": "dev"},
             "nodes": [
-                {"name": "my-sa", "type": "service_account", "config": {"account_id": "my-sa"}},
+                {"name": "my-sa", "type": "service_account", "config": {}},
                 {"name": "my-svc", "type": "cloud_run", "config": {
                     "image": "gcr.io/test/img:latest",
                     "service_account": "my-sa",
@@ -104,7 +104,7 @@ class TestEnvVarsTerraform:
         data = {
             "global": {"project_id": "test", "region": "us-central1", "environment": "dev"},
             "nodes": [
-                {"name": "my-sa", "type": "service_account", "config": {"account_id": "my-sa"}},
+                {"name": "my-sa", "type": "service_account", "config": {}},
                 {"name": "my-secret", "type": "secret_manager", "config": {}},
                 {"name": "my-svc", "type": "cloud_run", "config": {
                     "image": "gcr.io/test/img:latest",
@@ -125,7 +125,7 @@ class TestEnvVarsTerraform:
         data = {
             "global": {"project_id": "test", "region": "us-central1", "environment": "dev"},
             "nodes": [
-                {"name": "my-sa", "type": "service_account", "config": {"account_id": "my-sa"}},
+                {"name": "my-sa", "type": "service_account", "config": {}},
                 {"name": "my-func", "type": "cloud_function", "config": {
                     "runtime": "python312",
                     "entry_point": "main",
@@ -146,7 +146,7 @@ class TestEnvVarsTerraform:
         data = {
             "global": {"project_id": "test", "region": "us-central1", "environment": "dev"},
             "nodes": [
-                {"name": "my-sa", "type": "service_account", "config": {"account_id": "my-sa"}},
+                {"name": "my-sa", "type": "service_account", "config": {}},
                 {"name": "my-secret", "type": "secret_manager", "config": {}},
                 {"name": "my-func", "type": "cloud_function", "config": {
                     "runtime": "python312",
@@ -173,7 +173,7 @@ class TestEnvVarsSmoke:
         data = {
             "global": {"project_id": "smoke-test", "region": "us-central1", "environment": "dev"},
             "nodes": [
-                {"name": "my-sa", "type": "service_account", "config": {"account_id": "my-sa"}},
+                {"name": "my-sa", "type": "service_account", "config": {}},
                 {"name": "db-secret", "type": "secret_manager", "config": {}},
                 {"name": "api-key-secret", "type": "secret_manager", "config": {}},
                 {"name": "my-service", "type": "cloud_run", "config": {
@@ -213,7 +213,7 @@ class TestEnvVarsSmoke:
         data = {
             "global": {"project_id": "smoke-test", "region": "us-central1", "environment": "dev"},
             "nodes": [
-                {"name": "func-sa", "type": "service_account", "config": {"account_id": "func-sa"}},
+                {"name": "func-sa", "type": "service_account", "config": {}},
                 {"name": "my-secret", "type": "secret_manager", "config": {}},
                 {"name": "my-func", "type": "cloud_function", "config": {
                     "runtime": "python312",
@@ -243,7 +243,7 @@ class TestEnvVarsSmoke:
         data = {
             "global": {"project_id": "smoke-test", "region": "us-central1", "environment": "dev"},
             "nodes": [
-                {"name": "my-sa", "type": "service_account", "config": {"account_id": "my-sa"}},
+                {"name": "my-sa", "type": "service_account", "config": {}},
                 {"name": "clean-svc", "type": "cloud_run", "config": {
                     "image": "gcr.io/smoke-test/clean:latest",
                     "service_account": "my-sa",

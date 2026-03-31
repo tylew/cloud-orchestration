@@ -48,8 +48,8 @@ def test_basenode_backward_compat():
 def _node(node_type: NodeType, rid: str = "ab12cd34") -> BaseNode:
     # Minimal required configs for types that need them
     configs: dict = {
-        NodeType.BIGQUERY: {"dataset_id": "ds"},
-        NodeType.BIGTABLE: {"instance_id": "i", "cluster": {"cluster_id": "c", "zone": "z"}},
+        NodeType.BIGQUERY: {},
+        NodeType.BIGTABLE: {"cluster": {"cluster_id": "c", "zone": "z"}},
         NodeType.VPC: {"auto_create_subnetworks": False},
         NodeType.SUBNET: {"ip_cidr_range": "10.0.0.0/24", "region": "us-central1", "network": "my-vpc"},
         NodeType.VPC_CONNECTOR: {"ip_cidr_range": "10.8.0.0/28", "region": "us-central1"},

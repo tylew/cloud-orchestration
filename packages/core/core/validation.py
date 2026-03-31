@@ -53,21 +53,17 @@ REQUIRED_FIELDS: dict[str, list[FieldRequirement]] = {
     ],
     "firestore": [
         FieldRequirement("location_id", "error", "Location is required"),
-        FieldRequirement("database_id", "warning", "Database ID not set (defaults to '(default)')"),
     ],
     "bigquery": [
-        FieldRequirement("dataset_id", "error", "Dataset ID is required"),
         FieldRequirement("location", "warning", "Location not set (defaults to 'US')"),
     ],
     "gcs_bucket": [
         FieldRequirement("location", "error", "Location is required"),
     ],
     "bigtable": [
-        FieldRequirement("instance_id", "error", "Instance ID is required"),
     ],
     # -- IAM / networking types --
     "service_account": [
-        FieldRequirement("account_id", "error", "Account ID is required"),
     ],
     "vpc": [],  # VPC has sensible defaults (auto_create_subnetworks is explicit bool)
     "subnet": [
@@ -171,20 +167,15 @@ def validate_global_uniqueness(nodes: list[BaseNode]) -> list[ValidationIssue]:
 
 
 def validate_firestore_free_tier(nodes: list[BaseNode]) -> list[ValidationIssue]:
-    """Warn when Firestore database_id is not '(default)' (D-14)."""
-    issues: list[ValidationIssue] = []
-    for node in nodes:
-        if str(node.type) != "firestore":
-            continue
-        config = _get_config_dict(node)
-        db_id = config.get("database_id")
-        if db_id and db_id != "(default)":
-            issues.append(ValidationIssue(
-                "warning", node.name,
-                'Free tier is limited to the "(default)" database. '
-                'Multi-database requires a paid plan.',
-            ))
-    return issues
+    """Warn when Firestore database_id is not '(default)' (D-14).
+    
+    NOTE: database_id was removed from FirestoreConfig as part of the
+    resource_id naming abstraction. All Firestore databases now use the
+    '(default)' name derived from gcp_name_template. This check is a no-op
+    but retained for backward compatibility with blueprints that may still
+    carry database_id in extra fields.
+    """
+    return []
 
 
 def validate_parent_refs(nodes: list[BaseNode]) -> list[ValidationIssue]:

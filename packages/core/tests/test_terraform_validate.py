@@ -119,13 +119,13 @@ class TestTerraformValidate:
 
     def test_service_account(self):
         ok, output = _validate_blueprint([
-            _node("test-sa", "service_account", {"account_id": "test-service-acct"}),
+            _node("test-sa", "service_account", {}),
         ])
         assert ok, output
 
     def test_cloud_run_minimal(self):
         ok, output = _validate_blueprint([
-            _node("test-sa", "service_account", {"account_id": "test-service-acct"}),
+            _node("test-sa", "service_account", {}),
             _node("my-service", "cloud_run", {
                 "image": "us-docker.pkg.dev/cloudrun/container/hello",
                 "service_account": "my-sa",
@@ -135,7 +135,7 @@ class TestTerraformValidate:
 
     def test_cloud_run_full(self):
         ok, output = _validate_blueprint([
-            _node("test-sa", "service_account", {"account_id": "test-service-acct"}),
+            _node("test-sa", "service_account", {}),
             _node("my-service", "cloud_run", {
                 "image": "us-docker.pkg.dev/cloudrun/container/hello",
                 "service_account": "my-sa",
@@ -154,7 +154,7 @@ class TestTerraformValidate:
 
     def test_cloud_run_job(self):
         ok, output = _validate_blueprint([
-            _node("test-sa", "service_account", {"account_id": "test-service-acct"}),
+            _node("test-sa", "service_account", {}),
             _node("my-job", "cloud_run_job", {
                 "image": "us-docker.pkg.dev/cloudrun/container/job",
                 "service_account": "my-sa",
@@ -166,7 +166,7 @@ class TestTerraformValidate:
 
     def test_cloud_function(self):
         ok, output = _validate_blueprint([
-            _node("test-sa", "service_account", {"account_id": "my-func-sa"}),
+            _node("test-sa", "service_account", {}),
             _node("my-func", "cloud_function", {
                 "runtime": "python312",
                 "entry_point": "main",
@@ -233,7 +233,7 @@ class TestTerraformValidate:
                 "region": "us-central1",
                 "network": "my-vpc",
             }, depends_on=["my-vpc"]),
-            _node("test-sa", "service_account", {"account_id": "test-service-acct"}),
+            _node("test-sa", "service_account", {}),
             _node("my-db", "cloud_sql", {
                 "database_version": "POSTGRES_15",
                 "tier": "db-f1-micro",

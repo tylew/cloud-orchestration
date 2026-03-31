@@ -42,7 +42,6 @@ class BigtableTable(BaseModel):
 
 
 class BigtableConfig(BaseModel):
-    instance_id: str
     display_name: str | None = None
     instance_type: str = "PRODUCTION"
     deletion_protection: bool = True

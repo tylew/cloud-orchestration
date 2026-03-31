@@ -124,7 +124,7 @@ class TestFirestoreFreeTier:
             "global": {"project_id": "test", "region": "us-central1", "environment": "dev"},
             "nodes": [
                 {"name": "my-fs", "type": "firestore", "config": {
-                    "location_id": "us-central", "database_id": "(default)",
+                    "location_id": "us-central",
                 }},
             ],
         }
@@ -133,19 +133,18 @@ class TestFirestoreFreeTier:
         assert len(issues) == 0
 
     def test_non_default_database_warns(self):
+        """With database_id removed from schema, this check is now a no-op."""
         data = {
             "global": {"project_id": "test", "region": "us-central1", "environment": "dev"},
             "nodes": [
                 {"name": "my-fs", "type": "firestore", "config": {
-                    "location_id": "us-central", "database_id": "custom-db",
+                    "location_id": "us-central",
                 }},
             ],
         }
         envelope = Envelope.model_validate(data)
         issues = validate_firestore_free_tier(envelope.nodes)
-        assert len(issues) == 1
-        assert issues[0].severity == "warning"
-        assert "Free tier" in issues[0].message
+        assert len(issues) == 0
 
 
 class TestChildParentValidation:

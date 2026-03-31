@@ -81,7 +81,7 @@ def sample_envelope_data():
         },
         "nodes": [
             {"name": "test-vpc", "type": "vpc", "config": {"auto_create_subnetworks": False}},
-            {"name": "test-sa", "type": "service_account", "config": {"account_id": "test-sa"}},
+            {"name": "test-sa", "type": "service_account", "config": {}},
             {"name": "test-service", "type": "cloud_run", "config": {
                 "image": "gcr.io/test/image:latest",
                 "service_account": "test-sa",

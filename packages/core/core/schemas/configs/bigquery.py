@@ -105,7 +105,6 @@ class StorageBillingModel(StrEnum):
 
 
 class BigQueryConfig(BaseModel):
-    dataset_id: str
     location: str = "US"
     friendly_name: str | None = None
     description: str | None = None

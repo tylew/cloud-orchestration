@@ -18,7 +18,7 @@ class TestOutputGeneration:
         data = {
             "global": _global(),
             "nodes": [
-                _node("my-sa", "service_account", {"account_id": "my-sa"}),
+                _node("my-sa", "service_account", {}),
                 _node("my-service", "cloud_run", {
                     "image": "gcr.io/test/image:latest",
                     "service_account": "my-sa",
@@ -127,7 +127,7 @@ class TestOutputGeneration:
         data = {
             "global": _global(),
             "nodes": [
-                _node("my-sa", "service_account", {"account_id": "my-sa"}),
+                _node("my-sa", "service_account", {}),
                 _node("my-func", "cloud_function", {
                     "runtime": "python312",
                     "entry_point": "main",
@@ -147,7 +147,7 @@ class TestOutputGeneration:
         data = {
             "global": _global(),
             "nodes": [
-                _node("my-sa", "service_account", {"account_id": "my-sa"}),
+                _node("my-sa", "service_account", {}),
             ],
         }
         envelope = Envelope.model_validate(data)
@@ -181,7 +181,7 @@ class TestOutputClassification:
                     "region": "us-central1",
                     "network": "my-vpc",
                 }, depends_on=["my-vpc"]),
-                _node("my-sa", "service_account", {"account_id": "my-sa"}),
+                _node("my-sa", "service_account", {}),
             ],
         }
         envelope = Envelope.model_validate(data)
@@ -200,7 +200,7 @@ class TestOutputClassification:
                     "network": "my-vpc",
                     "region": "us-central1",
                 }, depends_on=["my-vpc"]),
-                _node("my-sa", "service_account", {"account_id": "my-sa"}),
+                _node("my-sa", "service_account", {}),
             ],
         }
         envelope = Envelope.model_validate(data)
@@ -213,7 +213,7 @@ class TestOutputClassification:
         data = {
             "global": _global(),
             "nodes": [
-                _node("my-sa", "service_account", {"account_id": "my-sa"}),
+                _node("my-sa", "service_account", {}),
             ],
         }
         envelope = Envelope.model_validate(data)

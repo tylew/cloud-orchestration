@@ -83,7 +83,6 @@ class FirestoreCmekConfig(BaseModel):
 
 
 class FirestoreConfig(BaseModel):
-    database_id: str = "(default)"
     location_id: str = ""
     type: str = "FIRESTORE_NATIVE"  # FIRESTORE_NATIVE or DATASTORE_MODE — immutable after creation
     database_edition: str | None = None  # STANDARD or ENTERPRISE
