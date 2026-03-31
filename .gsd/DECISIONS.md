@@ -1,0 +1,21 @@
+# Decisions
+
+| ID | Scope | Decision | Choice | Rationale | Revisable | Made By |
+|----|-------|----------|--------|-----------|-----------|---------|
+
+*No decisions recorded yet.*
+
+---
+
+## Decisions Table
+
+| # | When | Scope | Decision | Choice | Rationale | Revisable? | Made By |
+|---|------|-------|----------|--------|-----------|------------|---------|
+| D001 |  | architecture | Milestone sequencing for production push | M1: Terraform audit + Deep DAG + Workflow specs + Test UI → M2: Frontend + Agent codegen → M3: Prod infra → M4: Billing & launch | Flesh out underlying functionality first (M1), then build the user-facing experience (M2), then production infrastructure (M3), then billing and launch (M4). The platform must be functionally complete before the frontend and before going live. | Yes | collaborative |
+| D002 |  | architecture | How to handle dead frontend code (InsightBoard, insight components, etc.) | Archive to archive/ directory, don't delete | GSD workflow is additive. Moving dead code to archive/ keeps git history clean, avoids accidental reuse, and preserves the code for reference if needed later. | Yes | collaborative |
+| D003 |  | library | Terraform provider ground truth source for schema audit | HashiCorp Terraform MCP Server (Docker: hashicorp/terraform-mcp-server) configured at .gsd/mcp.json | The Terraform MCP returns the full argument reference for every GCP resource directly from the registry. This is the authoritative source for auditing our Pydantic schemas against what Terraform actually supports, eliminating guesswork. | Yes | collaborative |
+| D004 |  | architecture | How to handle two overlapping logical dependency systems | Remove both internalGraph and WorkflowDefinition, replace with Service Contract model | internalGraph was action-oriented pseudocode (wrong abstraction — AI agents should decide implementation). WorkflowDefinition was partially built with zero validation and zero tests. Both expressed the same concept (compute→resource dependencies) incompletely. One clean model (Service Contract) replaces both with field-level precision, DAG integration, IAM inference, and a clear AI codegen interface. Spec at docs/specs/service-contract.md. | Yes | collaborative |
+| D005 |  | architecture | Resource identity model for BaseNode | UUID id field on BaseNode; depends_on and all refs use IDs; name becomes display-only label | Current system conflates identity, display name, and GCP resource naming into one field. Renaming breaks deps and triggers TF destroy/create. UUID decouples all three: stable identity (id), free-form display (name), and derived GCP name (from registry convention). | Yes | collaborative |
+| D006 |  | architecture | How cross-resource references are declared and validated | RESOURCE_REFS contract declaring all cross-resource reference fields with target types and TF attributes | ~30 fields across 20+ types reference other nodes ad-hoc via template logic. No validation, no UI intelligence, no auto-dependency inference. A typed contract gives validation, template simplification, UI dropdowns, and auto-depends_on from one source of truth. | Yes | collaborative |
+| D007 |  | architecture | How GCP resource names are derived per type | Per-type gcp_name_source, gcp_name_template, and immutable flag in ComponentDefinition | Current naming is ad-hoc per template — some use env+node.name, others use config fields (database_id, account_id, instance_id). Naming convention in the registry makes it consistent, explicit, and allows the UI to show GCP name preview and immutable-name warnings. | Yes | collaborative |
+| D008 |  | architecture | How GCP resource IDs are generated and managed | Auto-generated resource_id on BaseNode (8-char hex from UUID), per-type naming template in registry (e.g. bq_{rid}, sa-{rid}), config-level ID fields removed | Users shouldn't need to understand or manage GCP resource IDs. The platform abstracts this entirely — resource_id is generated once at creation, immutable, unique by construction. Node name stays display-only and freely renamable. Config-level ID fields (dataset_id, instance_id, account_id, etc.) become redundant and are removed. | Yes | collaborative |

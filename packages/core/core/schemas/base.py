@@ -2,6 +2,7 @@
 
 import re
 from typing import Any
+from uuid import uuid4
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -10,6 +11,8 @@ from .configs import TYPE_TO_CONFIG
 
 
 class BaseNode(BaseModel, extra="allow"):
+    id: str = Field(default_factory=lambda: str(uuid4()))
+    resource_id: str = ""
     slug: str = ""
     name: str
     type: NodeType
@@ -18,6 +21,9 @@ class BaseNode(BaseModel, extra="allow"):
 
     @model_validator(mode="after")
     def resolve_config_and_validate(self):
+        # Auto-derive resource_id from id if not set
+        if not self.resource_id:
+            self.resource_id = self.id.replace("-", "")[:8]
         if not re.match(r"^[a-z][a-z0-9]*(-[a-z0-9]+)*$", self.name):
             raise ValueError(f"Node name {self.name!r} must be kebab-case")
 

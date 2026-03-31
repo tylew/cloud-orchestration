@@ -17,6 +17,7 @@ class ComponentDefinition:
     terraform_resource: str
     iam_scope: str | None = None
     iam_terraform_resource: str | None = None
+    gcp_name_template: str = ""
     default_outputs: tuple[dict, ...] = ()
 
 
@@ -28,6 +29,7 @@ REGISTRY: dict[NodeType, ComponentDefinition] = {
         is_compute=False,
         config_model=TYPE_TO_CONFIG[NodeType.SERVICE_ACCOUNT],
         terraform_resource="google_service_account",
+        gcp_name_template="sa-{rid}",
         default_outputs=(
             {"name": "email", "type": "connection_string"},
             {"name": "unique_id", "type": "connection_string"},
@@ -41,6 +43,7 @@ REGISTRY: dict[NodeType, ComponentDefinition] = {
         is_compute=False,
         config_model=TYPE_TO_CONFIG[NodeType.VPC],
         terraform_resource="google_compute_network",
+        gcp_name_template="{rid}",
         default_outputs=(
             {"name": "self_link", "type": "self_link"},
             {"name": "id", "type": "connection_string"},
@@ -54,6 +57,7 @@ REGISTRY: dict[NodeType, ComponentDefinition] = {
         is_compute=False,
         config_model=TYPE_TO_CONFIG[NodeType.SUBNET],
         terraform_resource="google_compute_subnetwork",
+        gcp_name_template="{rid}",
         default_outputs=(
             {"name": "self_link", "type": "self_link"},
             {"name": "id", "type": "connection_string"},
@@ -67,6 +71,7 @@ REGISTRY: dict[NodeType, ComponentDefinition] = {
         is_compute=False,
         config_model=TYPE_TO_CONFIG[NodeType.VPC_CONNECTOR],
         terraform_resource="google_vpc_access_connector",
+        gcp_name_template="{rid}",
         default_outputs=(
             {"name": "id", "type": "connection_string"},
             {"name": "self_link", "type": "self_link"},
@@ -82,6 +87,7 @@ REGISTRY: dict[NodeType, ComponentDefinition] = {
         terraform_resource="google_secret_manager_secret",
         iam_scope="resource",
         iam_terraform_resource="google_secret_manager_secret_iam_member",
+        gcp_name_template="{rid}",
         default_outputs=(
             {"name": "secret_id", "type": "connection_string"},
             {"name": "version", "type": "connection_string"},
@@ -97,6 +103,7 @@ REGISTRY: dict[NodeType, ComponentDefinition] = {
         terraform_resource="google_storage_bucket",
         iam_scope="resource",
         iam_terraform_resource="google_storage_bucket_iam_member",
+        gcp_name_template="{env}-{rid}",
         default_outputs=(
             {"name": "bucket", "type": "bucket"},
             {"name": "url", "type": "connection_string"},
@@ -112,6 +119,7 @@ REGISTRY: dict[NodeType, ComponentDefinition] = {
         terraform_resource="google_sql_database_instance",
         iam_scope="project",
         iam_terraform_resource="google_project_iam_member",
+        gcp_name_template="{env}-{rid}",
         default_outputs=(
             {"name": "connection_name", "type": "connection_string"},
             {"name": "private_ip", "type": "ip_address"},
@@ -127,6 +135,7 @@ REGISTRY: dict[NodeType, ComponentDefinition] = {
         terraform_resource="google_firestore_database",
         iam_scope="project",
         iam_terraform_resource="google_project_iam_member",
+        gcp_name_template="(default)",
         default_outputs=(
             {"name": "database", "type": "connection_string"},
             {"name": "name", "type": "connection_string"},
@@ -141,6 +150,7 @@ REGISTRY: dict[NodeType, ComponentDefinition] = {
         terraform_resource="google_bigquery_dataset",
         iam_scope="dataset",
         iam_terraform_resource="google_bigquery_dataset_iam_member",
+        gcp_name_template="bq_{rid}",
         default_outputs=(
             {"name": "dataset", "type": "dataset"},
         ),
@@ -154,6 +164,7 @@ REGISTRY: dict[NodeType, ComponentDefinition] = {
         terraform_resource="google_bigtable_instance",
         iam_scope="project",
         iam_terraform_resource="google_project_iam_member",
+        gcp_name_template="bt-{rid}",
         default_outputs=(
             {"name": "instance", "type": "connection_string"},
         ),
@@ -165,6 +176,7 @@ REGISTRY: dict[NodeType, ComponentDefinition] = {
         is_compute=False,
         config_model=TYPE_TO_CONFIG[NodeType.PUBSUB_SCHEMA],
         terraform_resource="google_pubsub_schema",
+        gcp_name_template="{env}-{rid}",
         default_outputs=(
             {"name": "name", "type": "connection_string"},
             {"name": "id", "type": "connection_string"},
@@ -179,6 +191,7 @@ REGISTRY: dict[NodeType, ComponentDefinition] = {
         terraform_resource="google_pubsub_topic",
         iam_scope="resource",
         iam_terraform_resource="google_pubsub_topic_iam_member",
+        gcp_name_template="{env}-{rid}",
         default_outputs=(
             {"name": "topic", "type": "topic"},
             {"name": "id", "type": "connection_string"},
@@ -193,6 +206,7 @@ REGISTRY: dict[NodeType, ComponentDefinition] = {
         terraform_resource="google_pubsub_subscription",
         iam_scope="resource",
         iam_terraform_resource="google_pubsub_subscription_iam_member",
+        gcp_name_template="{env}-{rid}",
         default_outputs=(
             {"name": "subscription", "type": "connection_string"},
             {"name": "id", "type": "connection_string"},
@@ -207,6 +221,7 @@ REGISTRY: dict[NodeType, ComponentDefinition] = {
         terraform_resource="google_cloud_tasks_queue",
         iam_scope="resource",
         iam_terraform_resource="google_cloud_tasks_queue_iam_member",
+        gcp_name_template="{env}-{rid}",
         default_outputs=(
             {"name": "queue", "type": "queue"},
             {"name": "id", "type": "connection_string"},
@@ -221,6 +236,7 @@ REGISTRY: dict[NodeType, ComponentDefinition] = {
         terraform_resource="google_cloud_run_v2_service",
         iam_scope="resource",
         iam_terraform_resource="google_cloud_run_v2_service_iam_member",
+        gcp_name_template="{env}-{rid}",
         default_outputs=(
             {"name": "endpoint", "type": "http_endpoint"},
             {"name": "name", "type": "connection_string"},
@@ -236,6 +252,7 @@ REGISTRY: dict[NodeType, ComponentDefinition] = {
         terraform_resource="google_cloud_run_v2_job",
         iam_scope="project",
         iam_terraform_resource="google_project_iam_member",
+        gcp_name_template="{env}-{rid}",
         default_outputs=(
             {"name": "job_name", "type": "connection_string"},
             {"name": "id", "type": "connection_string"},
@@ -250,6 +267,7 @@ REGISTRY: dict[NodeType, ComponentDefinition] = {
         terraform_resource="google_cloudfunctions2_function",
         iam_scope="resource",
         iam_terraform_resource="google_cloudfunctions2_function_iam_member",
+        gcp_name_template="{env}-{rid}",
         default_outputs=(
             {"name": "endpoint", "type": "http_endpoint"},
             {"name": "name", "type": "connection_string"},
@@ -262,6 +280,7 @@ REGISTRY: dict[NodeType, ComponentDefinition] = {
         is_compute=False,
         config_model=TYPE_TO_CONFIG[NodeType.EXTERNAL_LB],
         terraform_resource="google_compute_global_address",
+        gcp_name_template="{env}-{rid}",
         default_outputs=(
             {"name": "ip_address", "type": "ip_address"},
             {"name": "self_link", "type": "self_link"},
@@ -274,6 +293,7 @@ REGISTRY: dict[NodeType, ComponentDefinition] = {
         is_compute=False,
         config_model=TYPE_TO_CONFIG[NodeType.CLOUD_DNS],
         terraform_resource="google_dns_managed_zone",
+        gcp_name_template="{env}-{rid}",
         default_outputs=(
             {"name": "name_servers", "type": "connection_string"},
             {"name": "dns_name", "type": "connection_string"},
@@ -286,6 +306,7 @@ REGISTRY: dict[NodeType, ComponentDefinition] = {
         is_compute=False,
         config_model=TYPE_TO_CONFIG[NodeType.THIRD_PARTY_API],
         terraform_resource="",
+        gcp_name_template="",
         default_outputs=(
             {"name": "endpoint", "type": "http_endpoint"},
         ),
@@ -299,6 +320,7 @@ REGISTRY: dict[NodeType, ComponentDefinition] = {
         is_compute=False,
         config_model=TYPE_TO_CONFIG[NodeType.FIRESTORE_COLLECTION],
         terraform_resource="",
+        gcp_name_template="",
         default_outputs=(),
     ),
     NodeType.BIGQUERY_TABLE: ComponentDefinition(
@@ -308,6 +330,7 @@ REGISTRY: dict[NodeType, ComponentDefinition] = {
         is_compute=False,
         config_model=TYPE_TO_CONFIG[NodeType.BIGQUERY_TABLE],
         terraform_resource="google_bigquery_table",
+        gcp_name_template="",
         default_outputs=(
             {"name": "table_id", "type": "table"},
         ),
@@ -319,6 +342,7 @@ REGISTRY: dict[NodeType, ComponentDefinition] = {
         is_compute=False,
         config_model=TYPE_TO_CONFIG[NodeType.CLOUD_SQL_DATABASE],
         terraform_resource="google_sql_database",
+        gcp_name_template="{rid}",
         default_outputs=(
             {"name": "name", "type": "connection_string"},
         ),
@@ -330,6 +354,7 @@ REGISTRY: dict[NodeType, ComponentDefinition] = {
         is_compute=False,
         config_model=TYPE_TO_CONFIG[NodeType.CLOUD_SQL_TABLE],
         terraform_resource="",
+        gcp_name_template="",
         default_outputs=(),
     ),
 }
