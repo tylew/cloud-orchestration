@@ -1,7 +1,7 @@
 """Terraform generation and preview tests."""
 
-from packages.core.terraform.generator import generate_terraform, preview_resources
-from packages.core.schemas.base import Envelope
+from core.terraform.generator import generate_terraform, preview_resources
+from core.schemas.base import Envelope
 
 
 class TestGenerateTerraform:

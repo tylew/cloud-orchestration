@@ -3,8 +3,8 @@
 from dataclasses import dataclass, field
 from pydantic import BaseModel
 
-from packages.core.schemas.enums import NodeType, COMPUTE_TYPES
-from packages.core.schemas.configs import TYPE_TO_CONFIG
+from core.schemas.enums import NodeType, COMPUTE_TYPES
+from core.schemas.configs import TYPE_TO_CONFIG
 
 
 @dataclass(frozen=True)

@@ -2,7 +2,7 @@
 
 import pytest
 
-from packages.core.auto_provision import auto_provision_for_node
+from core.auto_provision import auto_provision_for_node
 
 
 class TestNonComputeNodes:

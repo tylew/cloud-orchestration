@@ -7,7 +7,7 @@ in resolver.py and validation.py with stdlib graphlib.TopologicalSorter (per D-0
 
 from graphlib import TopologicalSorter, CycleError
 
-from packages.core.schemas.base import BaseNode, Envelope
+from core.schemas.base import BaseNode, Envelope
 
 
 class BlueprintDAG:

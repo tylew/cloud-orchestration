@@ -7,13 +7,13 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 log = logging.getLogger(__name__)
 
-from packages.core.schemas.base import Envelope, BaseNode
-from packages.core.schemas.configs.bigquery import BqTable, BigQueryTableConfig
-from packages.core.schemas.configs.cloud_sql import SqlDatabase, CloudSqlDatabaseConfig
-from packages.core.schemas.enums import CHILD_PARENT_MAP
-from packages.core.registry import REGISTRY
-from packages.core.terraform.resolver import resolve_node_ref, topological_sort
-from packages.core.validation import reconstruct_collection_tree
+from core.schemas.base import Envelope, BaseNode
+from core.schemas.configs.bigquery import BqTable, BigQueryTableConfig
+from core.schemas.configs.cloud_sql import SqlDatabase, CloudSqlDatabaseConfig
+from core.schemas.enums import CHILD_PARENT_MAP
+from core.registry import REGISTRY
+from core.terraform.resolver import resolve_node_ref, topological_sort
+from core.validation import reconstruct_collection_tree
 
 
 _TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "templates")
@@ -169,8 +169,8 @@ def _render_iam_bindings(nodes: list) -> str:
     Map each (dependency_type) to the required IAM role and generate a
     google_project_iam_member binding.
     """
-    from packages.core.iam_mappings import IAM_ROLE_MAP
-    from packages.core.schemas.enums import COMPUTE_TYPES
+    from core.iam_mappings import IAM_ROLE_MAP
+    from core.schemas.enums import COMPUTE_TYPES
 
     # Build node lookup by both name and slug
     node_lookup = {}

@@ -1,7 +1,7 @@
 """Registry completeness and lookup tests."""
 
-from packages.core.registry import REGISTRY, get_definition, get_config_model, is_compute
-from packages.core.schemas.enums import NodeType, COMPUTE_TYPES
+from core.registry import REGISTRY, get_definition, get_config_model, is_compute
+from core.schemas.enums import NodeType, COMPUTE_TYPES
 
 
 class TestRegistryCompleteness:

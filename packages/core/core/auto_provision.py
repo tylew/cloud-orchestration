@@ -4,8 +4,8 @@ When a compute node is added, this module automatically creates supporting
 resources: service accounts, and (when needed) VPC/subnet/connector.
 """
 
-from packages.core.schemas.enums import COMPUTE_TYPES, NodeType
-from packages.core.iam_mappings import PRIVATE_ACCESS_TYPES
+from core.schemas.enums import COMPUTE_TYPES, NodeType
+from core.iam_mappings import PRIVATE_ACCESS_TYPES
 
 
 def auto_provision_for_node(

@@ -1,6 +1,6 @@
 """IAM role inference from ActionType x NodeType dependency edges."""
 
-from packages.core.schemas.enums import NodeType, COMPUTE_TYPES
+from core.schemas.enums import NodeType, COMPUTE_TYPES
 
 
 # (ActionType_value, NodeType_value) -> GCP IAM role string

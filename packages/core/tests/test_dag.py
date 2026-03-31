@@ -1,8 +1,8 @@
 """DAG topological sort, cycle detection, and parallel batch tests."""
 
 import pytest
-from packages.core.dag import BlueprintDAG
-from packages.core.schemas.base import Envelope
+from core.dag import BlueprintDAG
+from core.schemas.base import Envelope
 
 
 class TestTopologicalSort:

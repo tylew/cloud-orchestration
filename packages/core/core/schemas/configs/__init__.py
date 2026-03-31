@@ -2,7 +2,7 @@
 
 from pydantic import BaseModel
 
-from packages.core.schemas.enums import NodeType
+from core.schemas.enums import NodeType
 
 from .service_account import ServiceAccountConfig
 from .vpc import VpcConfig

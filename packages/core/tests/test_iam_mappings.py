@@ -2,7 +2,7 @@
 
 import pytest
 
-from packages.core.iam_mappings import IAM_ROLE_MAP, get_iam_role, infer_iam_roles, PRIVATE_ACCESS_TYPES
+from core.iam_mappings import IAM_ROLE_MAP, get_iam_role, infer_iam_roles, PRIVATE_ACCESS_TYPES
 
 
 class TestIamRoleMap:
@@ -43,19 +43,19 @@ class TestPrivateAccessTypes:
     """Verify PRIVATE_ACCESS_TYPES marks types needing VPC connectivity."""
 
     def test_cloud_sql_is_private(self):
-        from packages.core.schemas.enums import NodeType
+        from core.schemas.enums import NodeType
         assert NodeType.CLOUD_SQL in PRIVATE_ACCESS_TYPES
 
     def test_bigtable_is_private(self):
-        from packages.core.schemas.enums import NodeType
+        from core.schemas.enums import NodeType
         assert NodeType.BIGTABLE in PRIVATE_ACCESS_TYPES
 
     def test_firestore_is_not_private(self):
-        from packages.core.schemas.enums import NodeType
+        from core.schemas.enums import NodeType
         assert NodeType.FIRESTORE not in PRIVATE_ACCESS_TYPES
 
     def test_pubsub_is_not_private(self):
-        from packages.core.schemas.enums import NodeType
+        from core.schemas.enums import NodeType
         assert NodeType.PUBSUB_TOPIC not in PRIVATE_ACCESS_TYPES
 
 

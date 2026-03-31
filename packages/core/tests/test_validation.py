@@ -3,8 +3,8 @@
 import pytest
 from dataclasses import asdict
 
-from packages.core.schemas.base import Envelope
-from packages.core.validation import (
+from core.schemas.base import Envelope
+from core.validation import (
     validate_blueprint,
     validate_required_fields,
     validate_per_type_name_uniqueness,

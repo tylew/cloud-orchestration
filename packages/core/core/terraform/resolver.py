@@ -3,8 +3,8 @@
 import re
 from collections import defaultdict
 
-from packages.core.schemas.base import BaseNode, Envelope
-from packages.core.registry import REGISTRY
+from core.schemas.base import BaseNode, Envelope
+from core.registry import REGISTRY
 
 
 def resolve_node_ref(ref: str, nodes: dict[str, BaseNode]) -> str:

@@ -3,10 +3,10 @@
 import pytest
 
 try:
-    from packages.core.schemas.base import (
+    from core.schemas.base import (
         Envelope, BaseNode, GlobalConfig, Metadata, NodeOutput,
     )
-    from packages.core.schemas.enums import NodeType
+    from core.schemas.enums import NodeType
     _HAS_CORE = True
 except ImportError:
     _HAS_CORE = False

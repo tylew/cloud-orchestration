@@ -3,11 +3,11 @@
 import os
 import pytest
 from jinja2 import Environment, FileSystemLoader
-from packages.core.schemas.enums import NodeType
-from packages.core.schemas.configs.cloud_dns import CloudDnsConfig, DnsRecord
-from packages.core.schemas.configs import TYPE_TO_CONFIG
-from packages.core.registry import REGISTRY
-from packages.core.validation import REQUIRED_FIELDS
+from core.schemas.enums import NodeType
+from core.schemas.configs.cloud_dns import CloudDnsConfig, DnsRecord
+from core.schemas.configs import TYPE_TO_CONFIG
+from core.registry import REGISTRY
+from core.validation import REQUIRED_FIELDS
 
 
 class TestCloudDnsConfig:
@@ -74,7 +74,7 @@ class TestCloudDnsRegistration:
 class TestCloudDnsTerraform:
     @pytest.fixture
     def env(self):
-        tmpl_dir = os.path.join(os.path.dirname(__file__), "..", "terraform", "templates")
+        tmpl_dir = os.path.join(os.path.dirname(__file__), "..", "core", "terraform", "templates")
         return Environment(loader=FileSystemLoader(tmpl_dir), trim_blocks=True, lstrip_blocks=True)
 
     @pytest.fixture

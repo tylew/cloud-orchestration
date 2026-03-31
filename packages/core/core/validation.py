@@ -9,9 +9,9 @@ from dataclasses import dataclass
 
 from pydantic import BaseModel
 
-from packages.core.schemas.base import Envelope, BaseNode
-from packages.core.schemas.enums import CHILD_PARENT_MAP
-from packages.core.dag import BlueprintDAG
+from core.schemas.base import Envelope, BaseNode
+from core.schemas.enums import CHILD_PARENT_MAP
+from core.dag import BlueprintDAG
 
 
 @dataclass
@@ -274,7 +274,7 @@ def reconstruct_collection_tree(nodes: list[BaseNode]) -> None:
     and attaches reconstructed FirestoreCollection trees to parent FirestoreConfig.collections[].
     """
     from collections import defaultdict as _defaultdict
-    from packages.core.schemas.configs.firestore import FirestoreConfig, FirestoreCollection, FirestoreCollectionConfig
+    from core.schemas.configs.firestore import FirestoreConfig, FirestoreCollection, FirestoreCollectionConfig
 
     # Build slug -> node lookup
     slug_map: dict[str, BaseNode] = {}
