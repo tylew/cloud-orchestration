@@ -78,22 +78,6 @@ REGISTRY: dict[NodeType, ComponentDefinition] = {
             {"name": "state", "type": "connection_string"},
         ),
     ),
-    NodeType.SECRET_MANAGER: ComponentDefinition(
-        node_type=NodeType.SECRET_MANAGER,
-        label="Secret Manager",
-        category="Security",
-        is_compute=False,
-        config_model=TYPE_TO_CONFIG[NodeType.SECRET_MANAGER],
-        terraform_resource="google_secret_manager_secret",
-        iam_scope="resource",
-        iam_terraform_resource="google_secret_manager_secret_iam_member",
-        gcp_name_template="sc-{rid}",
-        default_outputs=(
-            {"name": "secret_id", "type": "connection_string"},
-            {"name": "version", "type": "connection_string"},
-            {"name": "name", "type": "connection_string"},
-        ),
-    ),
     NodeType.GCS_BUCKET: ComponentDefinition(
         node_type=NodeType.GCS_BUCKET,
         label="GCS Bucket",
@@ -135,7 +119,7 @@ REGISTRY: dict[NodeType, ComponentDefinition] = {
         terraform_resource="google_firestore_database",
         iam_scope="project",
         iam_terraform_resource="google_project_iam_member",
-        gcp_name_template="(default)",
+        gcp_name_template="fs-{rid}",
         default_outputs=(
             {"name": "database", "type": "connection_string"},
             {"name": "name", "type": "connection_string"},
@@ -299,30 +283,8 @@ REGISTRY: dict[NodeType, ComponentDefinition] = {
             {"name": "dns_name", "type": "connection_string"},
         ),
     ),
-    NodeType.THIRD_PARTY_API: ComponentDefinition(
-        node_type=NodeType.THIRD_PARTY_API,
-        label="3rd Party API",
-        category="External",
-        is_compute=False,
-        config_model=TYPE_TO_CONFIG[NodeType.THIRD_PARTY_API],
-        terraform_resource="",
-        gcp_name_template="",
-        default_outputs=(
-            {"name": "endpoint", "type": "http_endpoint"},
-        ),
-    ),
 
-    # --- Child Data Nodes (Phase 5) -------------------------------------------
-    NodeType.FIRESTORE_COLLECTION: ComponentDefinition(
-        node_type=NodeType.FIRESTORE_COLLECTION,
-        label="Firestore Collection",
-        category="Data",
-        is_compute=False,
-        config_model=TYPE_TO_CONFIG[NodeType.FIRESTORE_COLLECTION],
-        terraform_resource="",
-        gcp_name_template="",
-        default_outputs=(),
-    ),
+    # --- Child Data Nodes (real TF resources, embedded in parent templates) ----
     NodeType.BIGQUERY_TABLE: ComponentDefinition(
         node_type=NodeType.BIGQUERY_TABLE,
         label="BigQuery Table",
@@ -346,16 +308,6 @@ REGISTRY: dict[NodeType, ComponentDefinition] = {
         default_outputs=(
             {"name": "name", "type": "connection_string"},
         ),
-    ),
-    NodeType.CLOUD_SQL_TABLE: ComponentDefinition(
-        node_type=NodeType.CLOUD_SQL_TABLE,
-        label="Cloud SQL Table",
-        category="Data",
-        is_compute=False,
-        config_model=TYPE_TO_CONFIG[NodeType.CLOUD_SQL_TABLE],
-        terraform_resource="",
-        gcp_name_template="",
-        default_outputs=(),
     ),
 }
 

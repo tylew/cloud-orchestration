@@ -1,4 +1,4 @@
-resource "google_dns_managed_zone" "{{ node.name }}" {
+resource "google_dns_managed_zone" "{{ tf_label }}" {
   name          = "{{ gcp_name }}"
   dns_name      = "{{ config.dns_name if config.dns_name.endswith('.') else config.dns_name ~ '.' }}"
   description   = "{{ config.description or 'Managed by platform' }}"
@@ -64,9 +64,9 @@ resource "google_dns_managed_zone" "{{ node.name }}" {
 }
 
 {% for record in config.records %}
-resource "google_dns_record_set" "{{ node.name }}_{{ record.name | replace('@', 'apex') | replace('.', '_') }}_{{ record.type | lower }}" {
-  managed_zone = google_dns_managed_zone.{{ node.name }}.name
-  name         = {% if record.name == '@' %}google_dns_managed_zone.{{ node.name }}.dns_name{% else %}"{{ record.name }}.${google_dns_managed_zone.{{ node.name }}.dns_name}"{% endif %}
+resource "google_dns_record_set" "{{ tf_label }}_{{ record.name | replace('@', 'apex') | replace('.', '_') }}_{{ record.type | lower }}" {
+  managed_zone = google_dns_managed_zone.{{ tf_label }}.name
+  name         = {% if record.name == '@' %}google_dns_managed_zone.{{ tf_label }}.dns_name{% else %}"{{ record.name }}.${google_dns_managed_zone.{{ tf_label }}.dns_name}"{% endif %}
 
   type    = "{{ record.type }}"
   ttl     = {{ record.ttl }}

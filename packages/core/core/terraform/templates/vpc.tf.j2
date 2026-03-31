@@ -1,4 +1,4 @@
-resource "google_compute_network" "{{ node.name }}" {
+resource "google_compute_network" "{{ tf_label }}" {
   name                            = "{{ gcp_name }}"
   auto_create_subnetworks         = {{ config.auto_create_subnetworks | lower }}
   routing_mode                    = "{{ config.routing_mode }}"

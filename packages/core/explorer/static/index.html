@@ -62,8 +62,6 @@
   .tf-file-header { padding: 8px 12px; background: var(--bg3); font-size: 12px; color: var(--text2); font-family: var(--mono); border-bottom: 1px solid var(--border); }
   .tf-file pre { padding: 12px; font-size: 12px; font-family: var(--mono); overflow-x: auto; white-space: pre; line-height: 1.5; }
 
-  /* DAG panel */
-  #dag-canvas { flex: 1; min-height: 400px; background: var(--bg2); border-radius: 8px; border: 1px solid var(--border); }
 
   /* Config dialog */
   #config-dialog { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 100; }
@@ -93,7 +91,6 @@
     <div class="tab active" data-tab="blueprint">Blueprint</div>
     <div class="tab" data-tab="validation">Validation</div>
     <div class="tab" data-tab="terraform">Terraform</div>
-    <div class="tab" data-tab="dag">DAG</div>
   </div>
   <div id="panel-blueprint" class="panel active">
     <div id="blueprint-nodes"></div>
@@ -101,9 +98,6 @@
   </div>
   <div id="panel-validation" class="panel"></div>
   <div id="panel-terraform" class="panel"></div>
-  <div id="panel-dag" class="panel">
-    <svg id="dag-canvas"></svg>
-  </div>
 </div>
 
 <div id="config-dialog">
@@ -121,6 +115,7 @@
 // ── State ───────────────────────────────────────────────────────────
 let types = {};
 let blueprint = { global: { project_id: "my-project", region: "us-central1", environment: "dev" }, nodes: [] };
+let nodeEnriched = {};  // name -> { id, resource_id, gcp_name }
 let pendingType = null;
 
 // ── Init ────────────────────────────────────────────────────────────
@@ -163,7 +158,7 @@ function addResource(type) {
 
   document.getElementById('config-dialog-title').textContent = `Add ${info.label}`;
 
-  let html = `<label>Name (kebab-case)</label><input id="cfg-name" value="" placeholder="my-${type.replace(/_/g,'-')}" autofocus>`;
+  let html = `<label>Name</label><input id="cfg-name" value="" placeholder="My ${info.label}" autofocus>`;
 
   // Render form fields from JSON schema — top-level only
   for (const [key, prop] of Object.entries(props)) {
@@ -196,7 +191,6 @@ function closeConfigDialog() {
 function submitConfigDialog() {
   const name = document.getElementById('cfg-name').value.trim();
   if (!name) return alert('Name is required');
-  if (!/^[a-z][a-z0-9]*(-[a-z0-9]+)*$/.test(name)) return alert('Name must be kebab-case');
   if (blueprint.nodes.some(n => n.name === name)) return alert('Name already exists');
 
   const config = {};
@@ -217,6 +211,18 @@ function submitConfigDialog() {
 }
 
 // ── Blueprint ───────────────────────────────────────────────────────
+async function enrichNodes() {
+  if (blueprint.nodes.length === 0) { nodeEnriched = {}; return; }
+  try {
+    const res = await fetch('/api/validate', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(blueprint) });
+    const data = await res.json();
+    if (data.nodes) {
+      nodeEnriched = {};
+      for (const n of data.nodes) { nodeEnriched[n.name] = n; }
+    }
+  } catch(e) {}
+}
+
 function renderBlueprint() {
   const el = document.getElementById('blueprint-nodes');
   const empty = document.getElementById('blueprint-empty');
@@ -225,13 +231,21 @@ function renderBlueprint() {
 
   el.innerHTML = blueprint.nodes.map((n, i) => {
     const info = types[n.type] || {};
+    const enriched = nodeEnriched[n.name] || {};
     const otherNodes = blueprint.nodes.filter(o => o.name !== n.name);
+    const metaLine = enriched.resource_id
+      ? `<div style="font-size:11px;color:var(--text2);margin-bottom:6px;font-family:var(--mono)">
+           <span title="Resource ID">rid: ${enriched.resource_id}</span>
+           ${enriched.gcp_name ? ` · <span title="GCP resource name" style="color:var(--accent)">gcp: ${enriched.gcp_name}</span>` : ''}
+         </div>`
+      : '';
     return `<div class="node-card">
       <div class="node-card-header">
         <h3>${n.name}</h3>
         <span class="type-badge">${info.label || n.type}</span>
         <button class="remove-btn" onclick="removeNode(${i})">&times;</button>
       </div>
+      ${metaLine}
       <div class="deps-row">
         <span style="font-size:11px;color:var(--text2)">deps:</span>
         ${(n.depends_on||[]).map(d => `<span class="dep-chip" onclick="removeDep(${i},'${d}')">${d}</span>`).join('')}
@@ -259,7 +273,6 @@ function switchTab(tab) {
   document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === `panel-${tab}`));
   if (tab === 'validation') runValidation();
   if (tab === 'terraform') runTerraform();
-  if (tab === 'dag') runDag();
 }
 
 // ── Validation ──────────────────────────────────────────────────────
@@ -282,7 +295,14 @@ async function runValidation() {
 }
 
 let validateTimer = null;
-function autoValidate() { clearTimeout(validateTimer); validateTimer = setTimeout(() => { if (document.querySelector('.tab[data-tab=validation].active')) runValidation(); }, 300); }
+function autoValidate() {
+  clearTimeout(validateTimer);
+  validateTimer = setTimeout(async () => {
+    await enrichNodes();
+    renderBlueprint();
+    if (document.querySelector('.tab[data-tab=validation].active')) runValidation();
+  }, 300);
+}
 
 // ── Terraform ───────────────────────────────────────────────────────
 async function runTerraform() {
@@ -291,58 +311,30 @@ async function runTerraform() {
   const res = await fetch('/api/terraform', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(blueprint) });
   if (!res.ok) { panel.innerHTML = '<div class="issue error">Terraform generation failed</div>'; return; }
   const data = await res.json();
-  panel.innerHTML = Object.entries(data.files).map(([name, content]) =>
+  let html = `<div style="margin-bottom:12px"><button class="btn" onclick="runTfValidate()" id="tf-validate-btn">▶ terraform validate</button><span id="tf-validate-result" style="margin-left:12px;font-size:12px"></span></div>`;
+  html += Object.entries(data.files).map(([name, content]) =>
     `<div class="tf-file"><div class="tf-file-header">${name}</div><pre>${escHtml(content)}</pre></div>`
   ).join('');
+  panel.innerHTML = html;
 }
 
-// ── DAG ─────────────────────────────────────────────────────────────
-async function runDag() {
-  const svg = document.getElementById('dag-canvas');
-  if (blueprint.nodes.length === 0) { svg.innerHTML = '<text x="50%" y="50%" text-anchor="middle" fill="#8b90a0">Add resources first</text>'; return; }
-  const res = await fetch('/api/dag', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(blueprint) });
-  if (!res.ok) return;
-  const data = await res.json();
-  renderDag(svg, data);
-}
-
-function renderDag(svg, data) {
-  const W = svg.clientWidth || 800;
-  const H = svg.clientHeight || 500;
-  const batches = data.batches;
-  if (!batches.length) return;
-
-  // Position nodes by batch (left to right)
-  const pos = {};
-  const colW = W / (batches.length + 1);
-  batches.forEach((batch, bi) => {
-    const rowH = H / (batch.length + 1);
-    batch.forEach((name, ni) => {
-      pos[name] = { x: colW * (bi + 1), y: rowH * (ni + 1) };
-    });
-  });
-
-  const catColors = { Compute: '#6c8aff', Data: '#4ade80', Messaging: '#fbbf24', Network: '#a78bfa', Security: '#f87171', Storage: '#38bdf8', External: '#fb923c', Identity: '#f472b6' };
-
-  let html = '<defs><marker id="arrow" viewBox="0 0 10 10" refX="28" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#4a5070"/></marker></defs>';
-
-  // Edges
-  for (const e of data.edges) {
-    const from = pos[e.from], to = pos[e.to];
-    if (from && to) html += `<line x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}" stroke="#4a5070" stroke-width="1.5" marker-end="url(#arrow)"/>`;
+async function runTfValidate() {
+  const btn = document.getElementById('tf-validate-btn');
+  const result = document.getElementById('tf-validate-result');
+  btn.disabled = true; btn.textContent = '⏳ validating…';
+  result.textContent = '';
+  try {
+    const res = await fetch('/api/terraform/validate', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(blueprint) });
+    const data = await res.json();
+    if (data.valid) {
+      result.innerHTML = `<span style="color:var(--green,#4ade80)">✓ ${escHtml(data.diagnostics || 'Valid')}</span>`;
+    } else {
+      result.innerHTML = `<span style="color:var(--red,#f87171)">✗ Failed</span><pre style="margin-top:6px;font-size:11px;color:var(--red,#f87171);white-space:pre-wrap">${escHtml(data.diagnostics || data.detail || 'Unknown error')}</pre>`;
+    }
+  } catch(e) {
+    result.innerHTML = `<span style="color:var(--red,#f87171)">✗ ${escHtml(e.message)}</span>`;
   }
-
-  // Nodes
-  for (const n of data.nodes) {
-    const p = pos[n.name];
-    if (!p) continue;
-    const col = catColors[n.category] || '#6c8aff';
-    html += `<circle cx="${p.x}" cy="${p.y}" r="22" fill="${col}22" stroke="${col}" stroke-width="2"/>`;
-    html += `<text x="${p.x}" y="${p.y + 36}" text-anchor="middle" fill="${col}" font-size="11" font-family="sans-serif">${n.name}</text>`;
-    html += `<text x="${p.x}" y="${p.y + 4}" text-anchor="middle" fill="#e1e4ed" font-size="10" font-family="sans-serif">${n.label.substring(0,6)}</text>`;
-  }
-
-  svg.innerHTML = html;
+  btn.disabled = false; btn.textContent = '▶ terraform validate';
 }
 
 function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }

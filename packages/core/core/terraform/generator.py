@@ -14,7 +14,6 @@ from core.schemas.enums import CHILD_PARENT_MAP
 from core.registry import REGISTRY
 from core.terraform.naming import resolve_gcp_name
 from core.terraform.resolver import resolve_node_ref, topological_sort
-from core.validation import reconstruct_collection_tree
 
 
 _TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "templates")
@@ -59,8 +58,6 @@ _OUTPUT_ATTR_MAP: dict[tuple[str, str], tuple[str, str]] = {
     ("gcs_bucket", "bucket"): ("name", ""),
     ("cloud_dns", "name_servers"): ("name_servers", ""),
     ("cloud_dns", "dns_name"): ("dns_name", ""),
-    ("secret_manager", "secret_id"): ("secret_id", ""),
-    ("secret_manager", "name"): ("name", ""),
     ("firestore", "database"): ("name", ""),
     ("bigquery", "dataset"): ("dataset_id", ""),
     ("bigtable", "instance"): ("name", ""),
@@ -158,7 +155,6 @@ _NODE_TYPE_APIS: dict[str, list[str]] = {
     "external_lb": ["compute.googleapis.com"],
     "cloud_dns": ["dns.googleapis.com"],
     "service_account": ["iam.googleapis.com"],
-    "secret_manager": ["secretmanager.googleapis.com"],
     "gcs_bucket": ["storage.googleapis.com"],
 }
 
@@ -228,12 +224,15 @@ def _render_iam_bindings(nodes: list) -> str:
             if not role:
                 continue
 
-            binding_key = (node.name, dep, role)
+            _rid = getattr(node, 'resource_id', None) or node.name
+            node_id = f"n_{_rid}" if _rid[0:1].isdigit() else _rid
+            dep_id = dep  # deps reference by name still — keep for binding key
+            binding_key = (node_id, dep, role)
             if binding_key in bindings_added:
                 continue
             bindings_added.add(binding_key)
 
-            safe_name = f'{node.name}-{dep}-{role.split("/")[-1]}'.replace('.', '-')
+            safe_name = f'{node_id}-{dep_id}-{role.split("/")[-1]}'.replace('.', '-')
             lines.append(f'resource "google_project_iam_member" "{safe_name}" {{')
             lines.append(f'  project = var.gcp_project_id')
             lines.append(f'  role    = "{role}"')
@@ -365,8 +364,10 @@ def _render_outputs(nodes: list) -> str:
                 continue  # Not mapped = not external-facing
 
             tf_attr, resource_suffix = mapping
-            output_name = f"{node.name}_{out['name']}"
-            tf_resource_name = f"{node.name}{resource_suffix}"
+            rid = node.resource_id or node.name
+            tf_id = f"n_{rid}" if rid[0:1].isdigit() else rid
+            output_name = f"{tf_id}_{out['name']}"
+            tf_resource_name = f"{tf_id}{resource_suffix}"
             tf_ref = f"{defn.terraform_resource}.{tf_resource_name}.{tf_attr}"
             lines.append(f'output "{output_name}" {{')
             lines.append(f'  value       = {tf_ref}')
@@ -389,9 +390,6 @@ def generate_terraform(envelope: Envelope) -> dict[str, str]:
     node_map = {n.name: n for n in envelope.nodes}
     sorted_nodes = topological_sort(envelope.nodes)
 
-    # Reconstruct collection trees so Firestore templates have access to collections
-    reconstruct_collection_tree(envelope.nodes)
-
     global_cfg = envelope.global_
 
     # Attach flat child resources (BQ tables, SQL databases) to parents for template rendering
@@ -400,6 +398,15 @@ def generate_terraform(envelope: Envelope) -> dict[str, str]:
     # Helper for templates
     def resolve_ref(ref: str) -> str:
         return resolve_node_ref(ref, node_map)
+
+    def resolve_sa_email(ref: str) -> str:
+        """Resolve a service_account ref to a TF expression for the SA email."""
+        if not ref:
+            return '""'
+        resolved = resolve_node_ref(ref, node_map)
+        if resolved.startswith("google_service_account."):
+            return resolved.replace(".id", ".email")
+        return f'"{ref}"'
 
     # provider.tf
     files["provider.tf"] = _render_provider(env, global_cfg)
@@ -454,14 +461,20 @@ def generate_terraform(envelope: Envelope) -> dict[str, str]:
             # Compute GCP-safe name from registry naming template
             gcp_name = resolve_gcp_name(node, global_cfg.environment)
 
+            # TF resource label must be a valid HCL identifier (letter/underscore first)
+            rid = node.resource_id or node.name
+            tf_label = f"n_{rid}" if rid[0:1].isdigit() else rid
+
             block = tmpl.render(
                 node=node,
                 config=node.config,
                 global_=global_cfg,
                 resolve_ref=resolve_ref,
+                resolve_sa_email=resolve_sa_email,
                 defn=defn,
                 api_depends_on=api_dep_refs,
                 gcp_name=gcp_name,
+                tf_label=tf_label,
                 **extra_ctx,
             )
             # Inject depends_on for API enablement at the end of the resource block

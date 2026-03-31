@@ -1,5 +1,5 @@
-resource "google_cloud_scheduler_job" "{{ node.name }}_schedule_{{ idx }}" {
-  name      = "${var.environment}-{{ node.name }}-schedule-{{ idx }}"
+resource "google_cloud_scheduler_job" "{{ tf_label }}_schedule_{{ idx }}" {
+  name      = "${var.environment}-{{ tf_label }}-schedule-{{ idx }}"
   region    = var.gcp_region
   project   = var.gcp_project_id
   schedule  = "{{ trigger.schedule }}"
@@ -8,7 +8,7 @@ resource "google_cloud_scheduler_job" "{{ node.name }}_schedule_{{ idx }}" {
 
   http_target {
     http_method = "POST"
-    uri         = "https://${var.gcp_region}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${var.gcp_project_id}/jobs/${var.environment}-{{ node.name }}:run"
+    uri         = "https://${var.gcp_region}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${var.gcp_project_id}/jobs/${var.environment}-{{ tf_label }}:run"
 {% if node.config.service_account %}
     oauth_token {
       service_account_email = google_service_account.{{ node.config.service_account }}.email

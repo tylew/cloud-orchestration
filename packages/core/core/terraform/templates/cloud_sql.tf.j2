@@ -1,4 +1,4 @@
-resource "google_sql_database_instance" "{{ node.name }}" {
+resource "google_sql_database_instance" "{{ tf_label }}" {
   name                = "{{ gcp_name }}"
   database_version    = "{{ config.database_version }}"
   region              = var.gcp_region
@@ -63,9 +63,9 @@ resource "google_sql_database_instance" "{{ node.name }}" {
 }
 
 {% for db in config.databases %}
-resource "google_sql_database" "{{ node.name }}_{{ db.name }}" {
+resource "google_sql_database" "{{ tf_label }}_{{ db.name }}" {
   name     = "{{ db.name }}"
-  instance = google_sql_database_instance.{{ node.name }}.name
+  instance = google_sql_database_instance.{{ tf_label }}.name
 {% if db.charset %}
   charset  = "{{ db.charset }}"
 {% endif %}

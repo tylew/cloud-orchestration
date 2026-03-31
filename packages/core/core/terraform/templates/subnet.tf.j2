@@ -1,4 +1,4 @@
-resource "google_compute_subnetwork" "{{ node.name }}" {
+resource "google_compute_subnetwork" "{{ tf_label }}" {
   name                     = "{{ gcp_name }}"
   ip_cidr_range            = "{{ config.ip_cidr_range }}"
   region                   = {{ resolve_ref(config.region) if config.region.startswith('node:') else '"' ~ config.region ~ '"' }}

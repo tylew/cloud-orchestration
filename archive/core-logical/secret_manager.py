@@ -6,7 +6,6 @@ class SecretTopic(BaseModel):
 
 
 class SecretManagerConfig(BaseModel):
-    secret_id: str = ""
     description: str = ""
     replication: str = "auto"  # auto | user_managed
     replication_locations: list[str] = []  # for user_managed
@@ -18,7 +17,5 @@ class SecretManagerConfig(BaseModel):
     annotations: dict[str, str] = {}
     topics: list[SecretTopic] = []
     labels: dict[str, str] = {}
-    # Secret value management
-    value: str = ""  # the actual secret value (stored locally, never in TF)
-    value_provided: bool = False  # whether the value has been set
-    pending_email: str = ""  # email to send secure link for value provision
+
+    model_config = {"extra": "ignore"}

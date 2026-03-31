@@ -1,8 +1,9 @@
-resource "google_cloud_run_v2_service" "{{ node.name }}" {
-  name     = "{{ gcp_name }}"
-  location = var.gcp_region
-  project  = var.gcp_project_id
-  ingress  = "{{ config.ingress }}"
+resource "google_cloud_run_v2_service" "{{ tf_label }}" {
+  name                = "{{ gcp_name }}"
+  location            = var.gcp_region
+  project             = var.gcp_project_id
+  ingress             = "{{ config.ingress }}"
+  deletion_protection = false
 
 {% if config.description %}
   description = "{{ config.description }}"
@@ -59,7 +60,7 @@ resource "google_cloud_run_v2_service" "{{ node.name }}" {
 {% endif %}
 
   template {
-    service_account                  = {{ resolve_ref(config.service_account) if config.service_account.startswith('node:') else '"' ~ config.service_account ~ '"' }}
+    service_account                  = {{ resolve_sa_email(config.service_account) }}
     timeout                          = "{{ config.timeout }}"
     max_instance_request_concurrency = {{ config.max_concurrent_requests }}
     execution_environment            = "{{ config.execution_environment }}"
@@ -349,10 +350,10 @@ resource "google_cloud_run_v2_service" "{{ node.name }}" {
 }
 
 {% if config.public is defined and config.public %}
-resource "google_cloud_run_v2_service_iam_member" "{{ node.name }}-public" {
+resource "google_cloud_run_v2_service_iam_member" "{{ tf_label }}-public" {
   project  = var.gcp_project_id
   location = var.gcp_region
-  name     = google_cloud_run_v2_service.{{ node.name }}.name
+  name     = google_cloud_run_v2_service.{{ tf_label }}.name
   role     = "roles/run.invoker"
   member   = "allUsers"
 }

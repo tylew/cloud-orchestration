@@ -7,12 +7,18 @@ from core.schemas.base import BaseNode, Envelope
 from core.registry import REGISTRY
 
 
+def _tf_label(node: BaseNode) -> str:
+    """Derive a valid HCL identifier from a node's resource_id."""
+    rid = node.resource_id or node.name
+    return f"n_{rid}" if rid[0:1].isdigit() else rid
+
+
 def resolve_node_ref(ref: str, nodes: dict[str, BaseNode]) -> str:
     """Resolve node references to Terraform resource references.
 
     Handles two formats:
-    1. 'node:vpc-main.self_link' -> 'google_compute_network.vpc-main.self_link'
-    2. 'my-vpc' (bare node name) -> 'google_compute_network.my-vpc.id'
+    1. 'node:vpc-main.self_link' -> 'google_compute_network.<tf_label>.self_link'
+    2. 'my-vpc' (bare node name) -> 'google_compute_network.<tf_label>.id'
 
     Bare strings that don't match any known node name are returned as-is.
     """
@@ -26,7 +32,6 @@ def resolve_node_ref(ref: str, nodes: dict[str, BaseNode]) -> str:
         defn = REGISTRY.get(node.type)
         if not defn:
             return ref
-        # Non-TF nodes (e.g. third_party_api): inline the config value as a quoted string
         if not defn.terraform_resource:
             config = node.config
             if hasattr(config, attribute):
@@ -34,14 +39,14 @@ def resolve_node_ref(ref: str, nodes: dict[str, BaseNode]) -> str:
             if isinstance(config, dict) and attribute in config:
                 return f'"{config[attribute]}"'
             return ref
-        return f"{defn.terraform_resource}.{node_name}.{attribute}"
+        return f"{defn.terraform_resource}.{_tf_label(node)}.{attribute}"
 
-    # Format 2: bare node name -> resource.name.id
+    # Format 2: bare node name -> resource.tf_label.id
     node = nodes.get(ref)
     if node:
         defn = REGISTRY.get(node.type)
         if defn and defn.terraform_resource:
-            return f"{defn.terraform_resource}.{ref}.id"
+            return f"{defn.terraform_resource}.{_tf_label(node)}.id"
 
     # Not a node reference — return as-is
     return ref

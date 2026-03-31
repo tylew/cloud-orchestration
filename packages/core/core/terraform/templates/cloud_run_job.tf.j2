@@ -1,4 +1,4 @@
-resource "google_cloud_run_v2_job" "{{ node.name }}" {
+resource "google_cloud_run_v2_job" "{{ tf_label }}" {
   name     = "{{ gcp_name }}"
   location = var.gcp_region
   project  = var.gcp_project_id
@@ -42,7 +42,7 @@ resource "google_cloud_run_v2_job" "{{ node.name }}" {
     parallelism = {{ config.parallelism }}
 
     template {
-      service_account       = {{ resolve_ref(config.service_account) if config.service_account.startswith('node:') else '"' ~ config.service_account ~ '"' }}
+      service_account       = {{ resolve_sa_email(config.service_account) }}
       timeout               = "{{ config.timeout }}"
       max_retries           = {{ config.max_retries }}
       execution_environment = "{{ config.execution_environment }}"

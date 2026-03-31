@@ -8,7 +8,6 @@ class NodeType(StrEnum):
     VPC = "vpc"
     SUBNET = "subnet"
     VPC_CONNECTOR = "vpc_connector"
-    SECRET_MANAGER = "secret_manager"
     GCS_BUCKET = "gcs_bucket"
     CLOUD_SQL = "cloud_sql"
     FIRESTORE = "firestore"
@@ -23,12 +22,9 @@ class NodeType(StrEnum):
     CLOUD_FUNCTION = "cloud_function"
     EXTERNAL_LB = "external_lb"
     CLOUD_DNS = "cloud_dns"
-    THIRD_PARTY_API = "third_party_api"
-    # Child data node types
-    FIRESTORE_COLLECTION = "firestore_collection"
+    # Child data node types (with real TF resources, embedded in parent templates)
     BIGQUERY_TABLE = "bigquery_table"
     CLOUD_SQL_DATABASE = "cloud_sql_database"
-    CLOUD_SQL_TABLE = "cloud_sql_table"
 
 
 class OutputType(StrEnum):
@@ -57,8 +53,6 @@ CHILD_DATA_TYPES: set[NodeType] = set()
 
 # Maps child node type to its expected parent node type.
 CHILD_PARENT_MAP: dict[NodeType, NodeType] = {
-    NodeType.FIRESTORE_COLLECTION: NodeType.FIRESTORE,
     NodeType.BIGQUERY_TABLE: NodeType.BIGQUERY,
     NodeType.CLOUD_SQL_DATABASE: NodeType.CLOUD_SQL,
-    NodeType.CLOUD_SQL_TABLE: NodeType.CLOUD_SQL_DATABASE,
 }

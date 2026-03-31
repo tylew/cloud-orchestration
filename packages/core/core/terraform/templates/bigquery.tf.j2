@@ -1,4 +1,4 @@
-resource "google_bigquery_dataset" "{{ node.name }}" {
+resource "google_bigquery_dataset" "{{ tf_label }}" {
   dataset_id                  = "{{ gcp_name }}"
   location                    = "{{ config.location }}"
 {% if config.friendly_name %}
@@ -38,8 +38,8 @@ resource "google_bigquery_dataset" "{{ node.name }}" {
 }
 
 {% for table in config.tables %}
-resource "google_bigquery_table" "{{ node.name }}_{{ table.table_id }}" {
-  dataset_id          = google_bigquery_dataset.{{ node.name }}.dataset_id
+resource "google_bigquery_table" "{{ tf_label }}_{{ table.table_id }}" {
+  dataset_id          = google_bigquery_dataset.{{ tf_label }}.dataset_id
   table_id            = "{{ table.table_id }}"
 {% if table.columns is defined and table.columns %}
   schema = jsonencode([

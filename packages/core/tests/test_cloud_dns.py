@@ -93,6 +93,8 @@ class TestCloudDnsTerraform:
             "defn": FakeDefn(),
             "api_depends_on": [],
             "resolve_ref": lambda ref: 'google_compute_global_address.my-lb.address',
+            "tf_label": "my-dns",
+            "gcp_name": "dev-ab12cd34",
         }
 
     def test_managed_zone_basic(self, env, base_context):

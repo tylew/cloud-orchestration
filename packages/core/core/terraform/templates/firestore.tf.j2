@@ -1,4 +1,4 @@
-resource "google_firestore_database" "{{ node.name }}" {
+resource "google_firestore_database" "{{ tf_label }}" {
   name                        = "{{ gcp_name }}"
   location_id                 = "{{ config.location_id }}"
   type                        = "{{ config.type }}"
@@ -32,9 +32,9 @@ resource "google_firestore_database" "{{ node.name }}" {
 }
 
 {% for index in config.indexes %}
-resource "google_firestore_index" "{{ node.name }}_{{ index.collection }}_{{ loop.index0 }}" {
+resource "google_firestore_index" "{{ tf_label }}_{{ index.collection }}_{{ loop.index0 }}" {
   collection  = "{{ index.collection }}"
-  database    = google_firestore_database.{{ node.name }}.name
+  database    = google_firestore_database.{{ tf_label }}.name
   query_scope = "{{ index.query_scope }}"
   project     = var.gcp_project_id
 
@@ -53,8 +53,8 @@ resource "google_firestore_index" "{{ node.name }}_{{ index.collection }}_{{ loo
 {% endfor %}
 
 {% for coll in collections_with_ttl %}
-resource "google_firestore_field" "{{ node.name }}_{{ coll.path | replace('/', '_') }}_{{ coll.ttl_field }}_ttl" {
-  database   = google_firestore_database.{{ node.name }}.name
+resource "google_firestore_field" "{{ tf_label }}_{{ coll.path | replace('/', '_') }}_{{ coll.ttl_field }}_ttl" {
+  database   = google_firestore_database.{{ tf_label }}.name
   collection = "{{ coll.collection_name }}"
   field      = "{{ coll.ttl_field }}"
   project    = var.gcp_project_id

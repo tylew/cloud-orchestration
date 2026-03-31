@@ -1,4 +1,4 @@
-resource "google_vpc_access_connector" "{{ node.name }}" {
+resource "google_vpc_access_connector" "{{ tf_label }}" {
   name           = "{{ gcp_name }}"
   region         = {{ resolve_ref(config.region) if config.region.startswith('node:') else '"' ~ config.region ~ '"' }}
 {% if config.network %}

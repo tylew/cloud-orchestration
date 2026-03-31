@@ -1,4 +1,4 @@
-resource "google_storage_bucket" "{{ node.name }}" {
+resource "google_storage_bucket" "{{ tf_label }}" {
   name                        = "{{ gcp_name }}"
   location                    = "{{ config.location }}"
   storage_class               = "{{ config.storage_class }}"

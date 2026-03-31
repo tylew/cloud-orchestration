@@ -1,6 +1,5 @@
 """Core schema models — GCP resource definitions and blueprint envelope."""
 
-import re
 from typing import Any
 from uuid import uuid4
 
@@ -24,8 +23,8 @@ class BaseNode(BaseModel, extra="allow"):
         # Auto-derive resource_id from id if not set
         if not self.resource_id:
             self.resource_id = self.id.replace("-", "")[:8]
-        if not re.match(r"^[a-z][a-z0-9]*(-[a-z0-9]+)*$", self.name):
-            raise ValueError(f"Node name {self.name!r} must be kebab-case")
+        # name is a freeform display label — no format restrictions.
+        # GCP resource names are derived from resource_id + registry templates.
 
         config_cls = TYPE_TO_CONFIG.get(self.type)
         if config_cls is None:

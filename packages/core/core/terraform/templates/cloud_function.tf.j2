@@ -1,4 +1,4 @@
-resource "google_cloudfunctions2_function" "{{ node.name }}" {
+resource "google_cloudfunctions2_function" "{{ tf_label }}" {
   name     = "{{ gcp_name }}"
   location = var.gcp_region
   project  = var.gcp_project_id
@@ -93,7 +93,7 @@ resource "google_cloudfunctions2_function" "{{ node.name }}" {
     max_instance_request_concurrency = {{ config.max_concurrent_requests }}
     ingress_settings                 = "{{ config.ingress }}"
     all_traffic_on_latest_revision   = {{ config.all_traffic_on_latest_revision | lower }}
-    service_account_email            = {{ resolve_ref(config.service_account) if config.service_account.startswith('node:') else '"' ~ config.service_account ~ '"' }}
+    service_account_email            = {{ resolve_sa_email(config.service_account) }}
 {% if config.binary_authorization_policy %}
     binary_authorization_policy      = "{{ config.binary_authorization_policy }}"
 {% endif %}

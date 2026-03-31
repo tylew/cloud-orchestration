@@ -26,8 +26,6 @@ class TestIamRoleMap:
         ("Invoke", "cloud_function", "roles/cloudfunctions.invoker"),
         ("Emit", "pubsub_topic", "roles/pubsub.publisher"),
         ("Enqueue", "cloud_task_queue", "roles/cloudtasks.enqueuer"),
-        ("Read", "secret_manager", "roles/secretmanager.secretAccessor"),
-        ("Write", "secret_manager", "roles/secretmanager.secretVersionAdder"),
     ])
     def test_known_mappings(self, action, target, expected):
         assert get_iam_role(action, target) == expected

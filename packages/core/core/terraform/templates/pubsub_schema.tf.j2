@@ -1,4 +1,4 @@
-resource "google_pubsub_schema" "{{ node.name }}" {
+resource "google_pubsub_schema" "{{ tf_label }}" {
   name       = "{{ gcp_name }}"
   project    = var.gcp_project_id
   type       = "{{ config.type }}"

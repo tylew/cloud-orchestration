@@ -1,4 +1,4 @@
-resource "google_cloud_tasks_queue" "{{ node.name }}" {
+resource "google_cloud_tasks_queue" "{{ tf_label }}" {
   name     = "{{ gcp_name }}"
   location = {{ resolve_ref(config.location) if config.location.startswith('node:') else '"' ~ config.location ~ '"' }}
   project  = var.gcp_project_id

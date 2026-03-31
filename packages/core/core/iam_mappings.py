@@ -26,9 +26,6 @@ IAM_ROLE_MAP: dict[tuple[str, str], str] = {
     # Messaging
     ("Emit", "pubsub_topic"): "roles/pubsub.publisher",
     ("Enqueue", "cloud_task_queue"): "roles/cloudtasks.enqueuer",
-    # Secret Manager
-    ("Read", "secret_manager"): "roles/secretmanager.secretAccessor",
-    ("Write", "secret_manager"): "roles/secretmanager.secretVersionAdder",
 }
 
 # Node types that require private network access (VPC connector) per D-11.

@@ -1,8 +1,4 @@
-"""Cross-node reference & dependency validation (Phase 2, Step 2.1).
-
-Extended in Phase 5 with required-field validation, per-type name uniqueness,
-global uniqueness warnings, and Firestore free-tier checks.
-"""
+"""Blueprint validation — required fields, naming, parent refs."""
 
 from collections import defaultdict
 from dataclasses import dataclass
@@ -11,7 +7,6 @@ from pydantic import BaseModel
 
 from core.schemas.base import Envelope, BaseNode
 from core.schemas.enums import CHILD_PARENT_MAP
-from core.dag import BlueprintDAG
 
 
 @dataclass
@@ -76,7 +71,6 @@ REQUIRED_FIELDS: dict[str, list[FieldRequirement]] = {
         FieldRequirement("ip_cidr_range", "error", "IP CIDR range is required"),
         FieldRequirement("network", "error", "Network reference is required"),
     ],
-    "secret_manager": [],  # All fields have defaults; secret_id defaults to ""
     # -- Pub/Sub types --
     "pubsub_schema": [
         FieldRequirement("definition", "warning", "Schema definition not set"),
@@ -95,20 +89,11 @@ REQUIRED_FIELDS: dict[str, list[FieldRequirement]] = {
     "cloud_dns": [
         FieldRequirement("dns_name", "error", "DNS name (domain) is required"),
     ],
-    "third_party_api": [
-        FieldRequirement("base_url", "error", "Base URL is required"),
-    ],
-    # -- Child data node types --
-    "firestore_collection": [
-        FieldRequirement("parentRef", "error", "Parent reference is required"),
-    ],
+    # -- Child data node types (with real TF resources) --
     "bigquery_table": [
         FieldRequirement("parentRef", "error", "Parent reference is required"),
     ],
     "cloud_sql_database": [
-        FieldRequirement("parentRef", "error", "Parent reference is required"),
-    ],
-    "cloud_sql_table": [
         FieldRequirement("parentRef", "error", "Parent reference is required"),
     ],
 }
@@ -204,21 +189,6 @@ def validate_parent_refs(nodes: list[BaseNode]) -> list[ValidationIssue]:
     return issues
 
 
-def validate_depends_on(nodes: list[BaseNode]) -> list[ValidationIssue]:
-    """Validate depends_on targets exist (D-06)."""
-    issues: list[ValidationIssue] = []
-    slug_set = {n.slug for n in nodes if n.slug}
-    name_set = {n.name for n in nodes}
-    valid_targets = slug_set | name_set  # Accept both during slug transition
-    for node in nodes:
-        for dep in node.depends_on:
-            if dep not in valid_targets:
-                issues.append(ValidationIssue(
-                    "error", node.name,
-                    f"depends_on target '{dep}' does not exist",
-                ))
-    return issues
-
 
 def validate_blueprint_by_slug(envelope: Envelope) -> dict[str, dict]:
     """Run full validation and return results keyed by node slug (D-03).
@@ -258,57 +228,6 @@ def validate_blueprint_by_slug(envelope: Envelope) -> dict[str, dict]:
     return result
 
 
-def reconstruct_collection_tree(nodes: list[BaseNode]) -> None:
-    """Mutate Firestore DB nodes in-place: populate collections[] from flat collection nodes.
-
-    Walks all firestore_collection nodes, builds parent->children map via config.parentRef (slug),
-    and attaches reconstructed FirestoreCollection trees to parent FirestoreConfig.collections[].
-    """
-    from collections import defaultdict as _defaultdict
-    from core.schemas.configs.firestore import FirestoreConfig, FirestoreCollection, FirestoreCollectionConfig
-
-    # Build slug -> node lookup
-    slug_map: dict[str, BaseNode] = {}
-    for n in nodes:
-        if n.slug:
-            slug_map[n.slug] = n
-
-    # Find all firestore_collection nodes
-    coll_nodes = [n for n in nodes if str(n.type) == "firestore_collection"]
-    if not coll_nodes:
-        return
-
-    # Build parent_slug -> children map
-    children_of: dict[str, list[BaseNode]] = _defaultdict(list)
-    for cn in coll_nodes:
-        cfg = cn.config
-        parent_ref = getattr(cfg, 'parentRef', "") if hasattr(cfg, 'parentRef') else ""
-        if parent_ref:
-            children_of[parent_ref].append(cn)
-
-    def _build_subcollections(parent_slug: str) -> list[FirestoreCollection]:
-        result = []
-        for child in children_of.get(parent_slug, []):
-            cfg = child.config
-            if not isinstance(cfg, FirestoreCollectionConfig):
-                continue
-            coll = FirestoreCollection(
-                path=cfg.name,
-                fields=cfg.fields,
-                ttl_field=cfg.ttl_field,
-                id_strategy=cfg.id_strategy,
-                description=cfg.description,
-                subcollections=_build_subcollections(child.slug),
-            )
-            result.append(coll)
-        return result
-
-    # Attach to parent Firestore DB nodes
-    for node in nodes:
-        if str(node.type) == "firestore" and isinstance(node.config, FirestoreConfig):
-            node.config.collections = _build_subcollections(node.slug)
-
-
 def validate_blueprint(envelope: Envelope) -> list[ValidationIssue]:
     issues: list[ValidationIssue] = []
     node_map: dict[str, BaseNode] = {n.name: n for n in envelope.nodes}
@@ -319,9 +238,6 @@ def validate_blueprint(envelope: Envelope) -> list[ValidationIssue]:
         if node.name in seen_names:
             issues.append(ValidationIssue("error", node.name, f"Duplicate node name: {node.name!r}"))
         seen_names.add(node.name)
-
-    # Reconstruct collection tree from flat nodes before field resolution
-    reconstruct_collection_tree(envelope.nodes)
 
     # Required field validation per resource type (D-20, D-21)
     issues.extend(validate_required_fields(envelope.nodes))
@@ -337,12 +253,5 @@ def validate_blueprint(envelope: Envelope) -> list[ValidationIssue]:
 
     # Cross-node reference validation (D-06)
     issues.extend(validate_parent_refs(envelope.nodes))
-    issues.extend(validate_depends_on(envelope.nodes))
-
-    # Delegate graph validation to unified DAG service (per D-01)
-    dag = BlueprintDAG(envelope)
-    dag_errors = dag.validate_ordering()
-    for err in dag_errors:
-        issues.append(ValidationIssue("error", None, err))
 
     return issues

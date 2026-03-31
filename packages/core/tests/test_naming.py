@@ -54,8 +54,6 @@ def _node(node_type: NodeType, rid: str = "ab12cd34") -> BaseNode:
         NodeType.SUBNET: {"ip_cidr_range": "10.0.0.0/24", "region": "us-central1", "network": "my-vpc"},
         NodeType.VPC_CONNECTOR: {"ip_cidr_range": "10.8.0.0/28", "region": "us-central1"},
         NodeType.CLOUD_SQL_DATABASE: {"parentRef": "p", "name": "n"},
-        NodeType.CLOUD_SQL_TABLE: {"parentRef": "p", "name": "n"},
-        NodeType.THIRD_PARTY_API: {"provider": "x", "base_url": "http://x"},
     }
     return BaseNode(
         id="ab12cd34-0000-0000-0000-000000000000",
@@ -78,8 +76,8 @@ def test_bq_underscore():
     assert resolve_gcp_name(_node(NodeType.BIGQUERY), "dev") == "bq_ab12cd34"
 
 
-def test_firestore_default():
-    assert resolve_gcp_name(_node(NodeType.FIRESTORE), "dev") == "(default)"
+def test_firestore():
+    assert resolve_gcp_name(_node(NodeType.FIRESTORE), "dev") == "fs-ab12cd34"
 
 
 def test_bare_rid():
@@ -87,11 +85,6 @@ def test_bare_rid():
     assert resolve_gcp_name(_node(NodeType.VPC), "dev") == "vpc-ab12cd34"
     assert resolve_gcp_name(_node(NodeType.SUBNET), "dev") == "sn-ab12cd34"
     assert resolve_gcp_name(_node(NodeType.VPC_CONNECTOR), "dev") == "conn-ab12cd34"
-
-
-def test_no_template_returns_empty():
-    assert resolve_gcp_name(_node(NodeType.THIRD_PARTY_API), "dev") == ""
-    assert resolve_gcp_name(_node(NodeType.CLOUD_SQL_TABLE), "dev") == ""
 
 
 def test_bigtable():

@@ -218,12 +218,6 @@ class TestTerraformValidate:
         ])
         assert ok, output
 
-    def test_secret_manager(self):
-        ok, output = _validate_blueprint([
-            _node("my-secret", "secret_manager", {"secret_id": "my-secret"}),
-        ])
-        assert ok, output
-
     def test_full_stack(self):
         """Full multi-resource blueprint — the real integration test."""
         ok, output = _validate_blueprint([
@@ -241,7 +235,6 @@ class TestTerraformValidate:
             _node("my-fs", "firestore", {"location_id": "nam5"}),
             _node("my-bucket", "gcs_bucket", {"location": "US"}),
             _node("my-topic", "pubsub_topic", {}),
-            _node("my-secret", "secret_manager", {"secret_id": "api-key"}),
             _node("my-service", "cloud_run", {
                 "image": "us-docker.pkg.dev/cloudrun/container/hello",
                 "service_account": "my-sa",

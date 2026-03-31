@@ -18,7 +18,7 @@ from core.schemas.configs import TYPE_TO_CONFIG
 from core.schemas.enums import NodeType, COMPUTE_TYPES
 from core.validation import validate_blueprint
 from core.terraform.generator import generate_terraform
-from core.dag import BlueprintDAG
+from core.terraform.naming import resolve_gcp_name
 
 log = logging.getLogger(__name__)
 
@@ -41,6 +41,7 @@ def get_types():
             "category": defn.category,
             "is_compute": defn.is_compute,
             "terraform_resource": defn.terraform_resource,
+            "gcp_name_template": defn.gcp_name_template,
             "config_schema": schema,
         }
     return result
@@ -48,18 +49,29 @@ def get_types():
 
 @app.post("/api/validate")
 def validate(payload: dict):
-    """Validate a blueprint envelope. Returns issues list."""
+    """Validate a blueprint envelope. Returns issues list and enriched nodes."""
     try:
         envelope = Envelope.model_validate(payload)
     except ValidationError as e:
-        return {"valid": False, "parse_errors": e.errors(), "issues": []}
+        return {"valid": False, "parse_errors": e.errors(), "issues": [], "nodes": []}
     issues = validate_blueprint(envelope)
+    env = envelope.global_.environment or "dev"
+    enriched_nodes = []
+    for n in envelope.nodes:
+        gcp_name = resolve_gcp_name(n, env)
+        enriched_nodes.append({
+            "name": n.name,
+            "id": n.id,
+            "resource_id": n.resource_id,
+            "gcp_name": gcp_name,
+        })
     return {
         "valid": len([i for i in issues if i.severity == "error"]) == 0,
         "issues": [
             {"severity": i.severity, "node": i.node, "message": i.message}
             for i in issues
         ],
+        "nodes": enriched_nodes,
     }
 
 
@@ -74,39 +86,62 @@ def terraform(payload: dict):
     return {"files": files}
 
 
-@app.post("/api/dag")
-def dag(payload: dict):
-    """Return DAG nodes and edges for visualization."""
+@app.post("/api/terraform/validate")
+def terraform_validate(payload: dict):
+    """Generate HCL and run terraform validate. Returns pass/fail with diagnostics."""
+    import shutil
+    import subprocess
+    import tempfile
+
+    if not shutil.which("terraform"):
+        raise HTTPException(501, detail="terraform CLI not on PATH")
+
     try:
         envelope = Envelope.model_validate(payload)
     except ValidationError as e:
         raise HTTPException(422, detail=e.errors())
-    dag = BlueprintDAG(envelope)
 
-    nodes = []
-    for n in envelope.nodes:
-        defn = REGISTRY.get(n.type)
-        nodes.append({
-            "name": n.name,
-            "type": n.type.value,
-            "label": defn.label if defn else n.type.value,
-            "category": defn.category if defn else "Unknown",
-            "is_compute": defn.is_compute if defn else False,
-        })
+    files = generate_terraform(envelope)
+    if not files:
+        return {"valid": True, "diagnostics": "No Terraform files generated."}
 
-    edges = []
-    for n in envelope.nodes:
-        for dep in n.depends_on:
-            edges.append({"from": dep, "to": n.name})
-
-    # Get parallel batches for layout hints
+    tmpdir = tempfile.mkdtemp(prefix="explorer-tf-")
     try:
-        batches = dag.parallel_batches()
-        batch_list = [list(b) for b in batches]
-    except Exception:
-        batch_list = []
+        # Write provider + variables boilerplate
+        (Path(tmpdir) / "provider.tf").write_text(
+            'terraform {\n  required_providers {\n'
+            '    google = { source = "hashicorp/google"; version = ">= 5.0" }\n'
+            '    google-beta = { source = "hashicorp/google-beta"; version = ">= 5.0" }\n'
+            '  }\n}\n'
+        )
+        (Path(tmpdir) / "variables.tf").write_text(
+            'variable "gcp_project_id" { default = "test-project" }\n'
+            'variable "gcp_region" { default = "us-central1" }\n'
+            'variable "environment" { default = "dev" }\n'
+        )
+        for name, content in files.items():
+            (Path(tmpdir) / name).write_text(content)
 
-    return {"nodes": nodes, "edges": edges, "batches": batch_list}
+        # terraform init
+        init = subprocess.run(
+            ["terraform", "init", "-backend=false", "-no-color"],
+            cwd=tmpdir, capture_output=True, text=True, timeout=60,
+        )
+        if init.returncode != 0:
+            return {"valid": False, "diagnostics": f"terraform init failed:\n{init.stderr}"}
+
+        # terraform validate
+        val = subprocess.run(
+            ["terraform", "validate", "-no-color"],
+            cwd=tmpdir, capture_output=True, text=True, timeout=30,
+        )
+        if val.returncode == 0:
+            return {"valid": True, "diagnostics": val.stdout.strip()}
+        else:
+            return {"valid": False, "diagnostics": val.stderr.strip() or val.stdout.strip()}
+    finally:
+        shutil.rmtree(tmpdir, ignore_errors=True)
+
 
 
 # ── Static files ─────────────────────────────────────────────────────

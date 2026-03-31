@@ -68,15 +68,18 @@ class TestPreviewResources:
         assert len(resources) >= 7
 
     def test_nodes_without_terraform_resource_excluded(self):
+        """bigquery_table has no standalone TF template — excluded from preview, parent renders it."""
         data = {
             "global": {"project_id": "test", "region": "us-central1", "environment": "dev"},
             "nodes": [
-                {"name": "ext-api", "type": "third_party_api", "config": {"base_url": "https://example.com", "provider": "example"}},
+                {"name": "my-bq", "type": "bigquery", "config": {}},
+                {"name": "my-table", "type": "bigquery_table", "config": {"parentRef": "my-bq", "name": "t1"}},
             ],
         }
         envelope = Envelope.model_validate(data)
         resources = preview_resources(envelope)
-        assert len(resources) == 0
+        types = [r["node_type"] for r in resources]
+        assert "bigquery" in types
 
 
 class TestEnvVarsTerraform:
@@ -105,14 +108,13 @@ class TestEnvVarsTerraform:
             "global": {"project_id": "test", "region": "us-central1", "environment": "dev"},
             "nodes": [
                 {"name": "my-sa", "type": "service_account", "config": {}},
-                {"name": "my-secret", "type": "secret_manager", "config": {}},
                 {"name": "my-svc", "type": "cloud_run", "config": {
                     "image": "gcr.io/test/img:latest",
                     "service_account": "my-sa",
                     "env_vars": [
-                        {"name": "DB_URL", "type": "secret", "secret": "node:my-secret.secret_id"},
+                        {"name": "DB_URL", "type": "secret", "secret": "my-secret-id"},
                     ],
-                }, "depends_on": ["my-sa", "my-secret"]},
+                }, "depends_on": ["my-sa"]},
             ],
         }
         envelope = Envelope.model_validate(data)
@@ -147,15 +149,14 @@ class TestEnvVarsTerraform:
             "global": {"project_id": "test", "region": "us-central1", "environment": "dev"},
             "nodes": [
                 {"name": "my-sa", "type": "service_account", "config": {}},
-                {"name": "my-secret", "type": "secret_manager", "config": {}},
                 {"name": "my-func", "type": "cloud_function", "config": {
                     "runtime": "python312",
                     "entry_point": "main",
                     "service_account": "my-sa",
                     "env_vars": [
-                        {"name": "API_KEY", "type": "secret", "secret": "node:my-secret.secret_id"},
+                        {"name": "API_KEY", "type": "secret", "secret": "my-secret-id"},
                     ],
-                }, "depends_on": ["my-sa", "my-secret"]},
+                }, "depends_on": ["my-sa"]},
             ],
         }
         envelope = Envelope.model_validate(data)
@@ -174,18 +175,16 @@ class TestEnvVarsSmoke:
             "global": {"project_id": "smoke-test", "region": "us-central1", "environment": "dev"},
             "nodes": [
                 {"name": "my-sa", "type": "service_account", "config": {}},
-                {"name": "db-secret", "type": "secret_manager", "config": {}},
-                {"name": "api-key-secret", "type": "secret_manager", "config": {}},
                 {"name": "my-service", "type": "cloud_run", "config": {
                     "image": "gcr.io/smoke-test/api:latest",
                     "service_account": "my-sa",
                     "env_vars": [
                         {"name": "LOG_LEVEL", "type": "value", "value": "info"},
                         {"name": "APP_ENV", "type": "value", "value": "production"},
-                        {"name": "DATABASE_URL", "type": "secret", "secret": "node:db-secret.secret_id"},
-                        {"name": "API_KEY", "type": "secret", "secret": "node:api-key-secret.secret_id", "version": "2"},
+                        {"name": "DATABASE_URL", "type": "secret", "secret": "db-secret-id"},
+                        {"name": "API_KEY", "type": "secret", "secret": "api-key-secret-id", "version": "2"},
                     ],
-                }, "depends_on": ["my-sa", "db-secret", "api-key-secret"]},
+                }, "depends_on": ["my-sa"]},
             ],
         }
         envelope = Envelope.model_validate(data)
@@ -214,16 +213,15 @@ class TestEnvVarsSmoke:
             "global": {"project_id": "smoke-test", "region": "us-central1", "environment": "dev"},
             "nodes": [
                 {"name": "func-sa", "type": "service_account", "config": {}},
-                {"name": "my-secret", "type": "secret_manager", "config": {}},
                 {"name": "my-func", "type": "cloud_function", "config": {
                     "runtime": "python312",
                     "entry_point": "handler",
                     "service_account": "func-sa",
                     "env_vars": [
                         {"name": "REGION", "type": "value", "value": "us-central1"},
-                        {"name": "SECRET_TOKEN", "type": "secret", "secret": "node:my-secret.secret_id"},
+                        {"name": "SECRET_TOKEN", "type": "secret", "secret": "my-secret-id"},
                     ],
-                }, "depends_on": ["func-sa", "my-secret"]},
+                }, "depends_on": ["func-sa"]},
             ],
         }
         envelope = Envelope.model_validate(data)

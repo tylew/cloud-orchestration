@@ -10,7 +10,6 @@ from core.validation import (
     validate_per_type_name_uniqueness,
     validate_firestore_free_tier,
     validate_parent_refs,
-    validate_depends_on,
     ValidationIssue,
 )
 
@@ -34,19 +33,7 @@ class TestValidateBlueprint:
         dup_errors = [e for e in errors if "Duplicate" in e.message]
         assert len(dup_errors) >= 1
 
-    def test_invalid_depends_on(self):
-        data = {
-            "global": {"project_id": "test", "region": "us-central1", "environment": "dev"},
-            "nodes": [
-                {"name": "my-vpc", "type": "vpc", "config": {"auto_create_subnetworks": False},
-                 "depends_on": ["does-not-exist"]},
-            ],
-        }
-        envelope = Envelope.model_validate(data)
-        issues = validate_blueprint(envelope)
-        errors, _ = _issues_by_severity(issues)
-        dep_errors = [e for e in errors if "does-not-exist" in e.message]
-        assert len(dep_errors) >= 1
+
 
 
 

@@ -1,10 +1,10 @@
-resource "google_compute_global_address" "{{ node.name }}_ip" {
+resource "google_compute_global_address" "{{ tf_label }}_ip" {
   name    = "{{ gcp_name }}-ip"
   project = var.gcp_project_id
 }
 
 {% if config.managed_ssl_certificate %}
-resource "google_compute_managed_ssl_certificate" "{{ node.name }}_cert" {
+resource "google_compute_managed_ssl_certificate" "{{ tf_label }}_cert" {
   name    = "{{ gcp_name }}-cert"
   project = var.gcp_project_id
   managed {
@@ -14,7 +14,7 @@ resource "google_compute_managed_ssl_certificate" "{{ node.name }}_cert" {
 {% endif %}
 
 {% if config.default_backend %}
-resource "google_compute_region_network_endpoint_group" "{{ node.name }}_neg" {
+resource "google_compute_region_network_endpoint_group" "{{ tf_label }}_neg" {
   name                  = "{{ gcp_name }}-neg"
   network_endpoint_type = "SERVERLESS"
   region                = var.gcp_region
@@ -28,7 +28,7 @@ resource "google_compute_region_network_endpoint_group" "{{ node.name }}_neg" {
 }
 {% endif %}
 
-resource "google_compute_backend_service" "{{ node.name }}_backend" {
+resource "google_compute_backend_service" "{{ tf_label }}_backend" {
   name                  = "{{ gcp_name }}-backend"
   protocol              = "HTTPS"
   load_balancing_scheme = "{{ config.scheme }}"
@@ -39,7 +39,7 @@ resource "google_compute_backend_service" "{{ node.name }}_backend" {
 
 {% if config.default_backend %}
   backend {
-    group = google_compute_region_network_endpoint_group.{{ node.name }}_neg.id
+    group = google_compute_region_network_endpoint_group.{{ tf_label }}_neg.id
   }
 {% endif %}
 
@@ -57,26 +57,26 @@ resource "google_compute_backend_service" "{{ node.name }}_backend" {
 {% endif %}
 }
 
-resource "google_compute_url_map" "{{ node.name }}_url_map" {
+resource "google_compute_url_map" "{{ tf_label }}_url_map" {
   name            = "{{ gcp_name }}-url-map"
-  default_service = google_compute_backend_service.{{ node.name }}_backend.id
+  default_service = google_compute_backend_service.{{ tf_label }}_backend.id
   project         = var.gcp_project_id
 }
 
-resource "google_compute_target_https_proxy" "{{ node.name }}_proxy" {
+resource "google_compute_target_https_proxy" "{{ tf_label }}_proxy" {
   name             = "{{ gcp_name }}-proxy"
-  url_map          = google_compute_url_map.{{ node.name }}_url_map.id
+  url_map          = google_compute_url_map.{{ tf_label }}_url_map.id
 {% if config.managed_ssl_certificate %}
-  ssl_certificates = [google_compute_managed_ssl_certificate.{{ node.name }}_cert.id]
+  ssl_certificates = [google_compute_managed_ssl_certificate.{{ tf_label }}_cert.id]
 {% endif %}
   project          = var.gcp_project_id
 }
 
-resource "google_compute_global_forwarding_rule" "{{ node.name }}_fwd" {
+resource "google_compute_global_forwarding_rule" "{{ tf_label }}_fwd" {
   name                  = "{{ gcp_name }}-fwd"
-  target                = google_compute_target_https_proxy.{{ node.name }}_proxy.id
+  target                = google_compute_target_https_proxy.{{ tf_label }}_proxy.id
   port_range            = "443"
-  ip_address            = google_compute_global_address.{{ node.name }}_ip.address
+  ip_address            = google_compute_global_address.{{ tf_label }}_ip.address
   load_balancing_scheme = "{{ config.scheme }}"
   project               = var.gcp_project_id
 }

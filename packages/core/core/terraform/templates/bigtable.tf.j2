@@ -1,4 +1,4 @@
-resource "google_bigtable_instance" "{{ node.name }}" {
+resource "google_bigtable_instance" "{{ tf_label }}" {
   name                = "{{ gcp_name }}"
 {% if config.display_name %}
   display_name        = "{{ config.display_name }}"
@@ -29,9 +29,9 @@ resource "google_bigtable_instance" "{{ node.name }}" {
 }
 
 {% for table in config.tables %}
-resource "google_bigtable_table" "{{ node.name }}_{{ table.table_id }}" {
+resource "google_bigtable_table" "{{ tf_label }}_{{ table.table_id }}" {
   name          = "{{ table.table_id }}"
-  instance_name = google_bigtable_instance.{{ node.name }}.name
+  instance_name = google_bigtable_instance.{{ tf_label }}.name
   project       = var.gcp_project_id
 
 {% for cf in table.column_families %}
