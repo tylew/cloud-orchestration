@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Core Explorer</title>
+<style>
+  :root {
+    --bg: #0f1117; --bg2: #1a1d27; --bg3: #242833;
+    --border: #2e3345; --text: #e1e4ed; --text2: #8b90a0;
+    --accent: #6c8aff; --green: #4ade80; --red: #f87171; --yellow: #fbbf24;
+    --mono: 'SF Mono', 'Fira Code', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
+
+  /* Sidebar — resource palette */
+  #sidebar { width: 260px; background: var(--bg2); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+  #sidebar h2 { padding: 16px; font-size: 14px; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--border); }
+  #palette { flex: 1; overflow-y: auto; padding: 8px; }
+  .cat-label { font-size: 11px; color: var(--text2); padding: 8px 8px 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .type-btn { display: block; width: 100%; text-align: left; background: none; border: 1px solid transparent; color: var(--text); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 13px; margin: 1px 0; }
+  .type-btn:hover { background: var(--bg3); border-color: var(--border); }
+
+  /* Main area */
+  #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* Tabs */
+  #tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--bg2); }
+  .tab { padding: 10px 20px; cursor: pointer; color: var(--text2); font-size: 13px; border-bottom: 2px solid transparent; }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* Panels */
+  .panel { flex: 1; overflow: auto; padding: 20px; display: none; }
+  .panel.active { display: flex; flex-direction: column; gap: 16px; }
+
+  /* Blueprint panel */
+  #blueprint-nodes { display: flex; flex-direction: column; gap: 8px; }
+  .node-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; }
+  .node-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .node-card-header h3 { font-size: 14px; }
+  .node-card-header .type-badge { font-size: 11px; background: var(--bg3); padding: 2px 8px; border-radius: 4px; color: var(--text2); }
+  .node-card .remove-btn { background: none; border: none; color: var(--red); cursor: pointer; font-size: 16px; }
+  .node-card details { margin-top: 8px; }
+  .node-card summary { font-size: 12px; color: var(--text2); cursor: pointer; }
+  .node-card textarea { width: 100%; min-height: 80px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-family: var(--mono); font-size: 12px; padding: 8px; margin-top: 6px; resize: vertical; }
+  .deps-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .dep-chip { font-size: 11px; background: var(--bg3); padding: 2px 8px; border-radius: 4px; color: var(--accent); cursor: pointer; }
+  .dep-chip:hover { text-decoration: line-through; color: var(--red); }
+  .add-dep-select { font-size: 12px; background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 4px; padding: 2px 6px; }
+
+  /* Validation panel */
+  .issue { padding: 8px 12px; border-radius: 6px; font-size: 13px; }
+  .issue.error { background: rgba(248,113,113,0.1); border-left: 3px solid var(--red); }
+  .issue.warning { background: rgba(251,191,36,0.1); border-left: 3px solid var(--yellow); }
+  .issue .node-name { color: var(--accent); font-weight: 600; }
+  .valid-badge { font-size: 16px; padding: 12px; background: rgba(74,222,128,0.1); border-radius: 8px; text-align: center; color: var(--green); }
+
+  /* Terraform panel */
+  .tf-file { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .tf-file-header { padding: 8px 12px; background: var(--bg3); font-size: 12px; color: var(--text2); font-family: var(--mono); border-bottom: 1px solid var(--border); }
+  .tf-file pre { padding: 12px; font-size: 12px; font-family: var(--mono); overflow-x: auto; white-space: pre; line-height: 1.5; }
+
+  /* DAG panel */
+  #dag-canvas { flex: 1; min-height: 400px; background: var(--bg2); border-radius: 8px; border: 1px solid var(--border); }
+
+  /* Config dialog */
+  #config-dialog { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 100; }
+  #config-dialog.open { display: flex; }
+  #config-dialog-inner { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 24px; width: 500px; max-height: 80vh; overflow-y: auto; }
+  #config-dialog-inner h3 { margin-bottom: 16px; }
+  #config-dialog-inner label { display: block; font-size: 12px; color: var(--text2); margin-top: 10px; }
+  #config-dialog-inner input, #config-dialog-inner select { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 4px; padding: 6px 8px; font-size: 13px; margin-top: 4px; }
+  #config-dialog-inner .btn-row { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
+  .btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-secondary { background: var(--bg3); color: var(--text); }
+
+  /* Empty state */
+  .empty { text-align: center; padding: 40px; color: var(--text2); }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h2>Resources</h2>
+  <div id="palette"></div>
+</div>
+
+<div id="main">
+  <div id="tabs">
+    <div class="tab active" data-tab="blueprint">Blueprint</div>
+    <div class="tab" data-tab="validation">Validation</div>
+    <div class="tab" data-tab="terraform">Terraform</div>
+    <div class="tab" data-tab="dag">DAG</div>
+  </div>
+  <div id="panel-blueprint" class="panel active">
+    <div id="blueprint-nodes"></div>
+    <div id="blueprint-empty" class="empty">Click a resource type to add it to your blueprint</div>
+  </div>
+  <div id="panel-validation" class="panel"></div>
+  <div id="panel-terraform" class="panel"></div>
+  <div id="panel-dag" class="panel">
+    <svg id="dag-canvas"></svg>
+  </div>
+</div>
+
+<div id="config-dialog">
+  <div id="config-dialog-inner">
+    <h3 id="config-dialog-title">Configure Resource</h3>
+    <form id="config-form"></form>
+    <div class="btn-row">
+      <button class="btn btn-secondary" type="button" onclick="closeConfigDialog()">Cancel</button>
+      <button class="btn btn-primary" type="button" onclick="submitConfigDialog()">Add Resource</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ───────────────────────────────────────────────────────────
+let types = {};
+let blueprint = { global: { project_id: "my-project", region: "us-central1", environment: "dev" }, nodes: [] };
+let pendingType = null;
+
+// ── Init ────────────────────────────────────────────────────────────
+async function init() {
+  const res = await fetch('/api/types');
+  types = await res.json();
+  renderPalette();
+  renderBlueprint();
+  document.querySelectorAll('.tab').forEach(t => t.onclick = () => switchTab(t.dataset.tab));
+}
+
+// ── Palette ─────────────────────────────────────────────────────────
+function renderPalette() {
+  const el = document.getElementById('palette');
+  const cats = {};
+  for (const [type, info] of Object.entries(types)) {
+    if (!cats[info.category]) cats[info.category] = [];
+    cats[info.category].push({ type, ...info });
+  }
+  // Order: Compute, Data, Messaging, Network, Security, Storage, External, Identity
+  const order = ['Compute','Data','Messaging','Network','Security','Storage','External','Identity'];
+  let html = '';
+  for (const cat of order) {
+    if (!cats[cat]) continue;
+    html += `<div class="cat-label">${cat}</div>`;
+    for (const t of cats[cat]) {
+      html += `<button class="type-btn" onclick="addResource('${t.type}')">${t.label}</button>`;
+    }
+  }
+  el.innerHTML = html;
+}
+
+// ── Config Dialog ───────────────────────────────────────────────────
+function addResource(type) {
+  pendingType = type;
+  const info = types[type];
+  const schema = info.config_schema || {};
+  const props = schema.properties || {};
+  const required = new Set(schema.required || []);
+
+  document.getElementById('config-dialog-title').textContent = `Add ${info.label}`;
+
+  let html = `<label>Name (kebab-case)</label><input id="cfg-name" value="" placeholder="my-${type.replace(/_/g,'-')}" autofocus>`;
+
+  // Render form fields from JSON schema — top-level only
+  for (const [key, prop] of Object.entries(props)) {
+    const req = required.has(key) ? ' *' : '';
+    const def = prop.default !== undefined ? prop.default : '';
+    const desc = prop.description || '';
+
+    if (prop.type === 'boolean') {
+      html += `<label>${key}${req}</label><select data-key="${key}"><option value="true" ${def === true ? 'selected' : ''}>true</option><option value="false" ${def === false ? 'selected' : ''}>false</option></select>`;
+    } else if (prop.enum) {
+      html += `<label>${key}${req}</label><select data-key="${key}">${prop.enum.map(v => `<option${v === def ? ' selected' : ''}>${v}</option>`).join('')}</select>`;
+    } else if (prop.type === 'integer' || prop.type === 'number') {
+      html += `<label>${key}${req}</label><input data-key="${key}" type="number" value="${def}" placeholder="${desc}">`;
+    } else if (prop.type === 'string') {
+      html += `<label>${key}${req}</label><input data-key="${key}" value="${def}" placeholder="${desc || key}">`;
+    }
+    // Skip objects, arrays — user can edit JSON directly after adding
+  }
+
+  document.getElementById('config-form').innerHTML = html;
+  document.getElementById('config-dialog').classList.add('open');
+  setTimeout(() => document.getElementById('cfg-name').focus(), 50);
+}
+
+function closeConfigDialog() {
+  document.getElementById('config-dialog').classList.remove('open');
+  pendingType = null;
+}
+
+function submitConfigDialog() {
+  const name = document.getElementById('cfg-name').value.trim();
+  if (!name) return alert('Name is required');
+  if (!/^[a-z][a-z0-9]*(-[a-z0-9]+)*$/.test(name)) return alert('Name must be kebab-case');
+  if (blueprint.nodes.some(n => n.name === name)) return alert('Name already exists');
+
+  const config = {};
+  document.querySelectorAll('#config-form [data-key]').forEach(el => {
+    const key = el.dataset.key;
+    let val = el.value;
+    if (val === '') return;
+    if (val === 'true') val = true;
+    else if (val === 'false') val = false;
+    else if (!isNaN(val) && val !== '') val = Number(val);
+    config[key] = val;
+  });
+
+  blueprint.nodes.push({ name, type: pendingType, config, depends_on: [] });
+  closeConfigDialog();
+  renderBlueprint();
+  autoValidate();
+}
+
+// ── Blueprint ───────────────────────────────────────────────────────
+function renderBlueprint() {
+  const el = document.getElementById('blueprint-nodes');
+  const empty = document.getElementById('blueprint-empty');
+  if (blueprint.nodes.length === 0) { el.innerHTML = ''; empty.style.display = ''; return; }
+  empty.style.display = 'none';
+
+  el.innerHTML = blueprint.nodes.map((n, i) => {
+    const info = types[n.type] || {};
+    const otherNodes = blueprint.nodes.filter(o => o.name !== n.name);
+    return `<div class="node-card">
+      <div class="node-card-header">
+        <h3>${n.name}</h3>
+        <span class="type-badge">${info.label || n.type}</span>
+        <button class="remove-btn" onclick="removeNode(${i})">&times;</button>
+      </div>
+      <div class="deps-row">
+        <span style="font-size:11px;color:var(--text2)">deps:</span>
+        ${(n.depends_on||[]).map(d => `<span class="dep-chip" onclick="removeDep(${i},'${d}')">${d}</span>`).join('')}
+        ${otherNodes.length ? `<select class="add-dep-select" onchange="addDep(${i},this.value);this.value=''">
+          <option value="">+ add</option>
+          ${otherNodes.filter(o => !(n.depends_on||[]).includes(o.name)).map(o => `<option value="${o.name}">${o.name}</option>`).join('')}
+        </select>` : ''}
+      </div>
+      <details>
+        <summary>config (JSON)</summary>
+        <textarea onchange="updateConfig(${i}, this.value)">${JSON.stringify(n.config, null, 2)}</textarea>
+      </details>
+    </div>`;
+  }).join('');
+}
+
+function removeNode(i) { blueprint.nodes.splice(i, 1); renderBlueprint(); autoValidate(); }
+function addDep(i, dep) { if (dep && !blueprint.nodes[i].depends_on.includes(dep)) { blueprint.nodes[i].depends_on.push(dep); renderBlueprint(); autoValidate(); } }
+function removeDep(i, dep) { blueprint.nodes[i].depends_on = blueprint.nodes[i].depends_on.filter(d => d !== dep); renderBlueprint(); autoValidate(); }
+function updateConfig(i, val) { try { blueprint.nodes[i].config = JSON.parse(val); autoValidate(); } catch(e) {} }
+
+// ── Tabs ────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === `panel-${tab}`));
+  if (tab === 'validation') runValidation();
+  if (tab === 'terraform') runTerraform();
+  if (tab === 'dag') runDag();
+}
+
+// ── Validation ──────────────────────────────────────────────────────
+async function runValidation() {
+  const panel = document.getElementById('panel-validation');
+  if (blueprint.nodes.length === 0) { panel.innerHTML = '<div class="empty">Add resources first</div>'; return; }
+  const res = await fetch('/api/validate', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(blueprint) });
+  const data = await res.json();
+  if (data.parse_errors?.length) {
+    panel.innerHTML = `<div class="issue error"><b>Parse error:</b> ${data.parse_errors.map(e => e.msg).join(', ')}</div>`;
+    return;
+  }
+  if (data.valid && data.issues.length === 0) {
+    panel.innerHTML = '<div class="valid-badge">✓ Blueprint is valid</div>';
+    return;
+  }
+  panel.innerHTML = data.issues.map(i =>
+    `<div class="issue ${i.severity}"><span class="node-name">${i.node || 'global'}</span> ${i.message}</div>`
+  ).join('');
+}
+
+let validateTimer = null;
+function autoValidate() { clearTimeout(validateTimer); validateTimer = setTimeout(() => { if (document.querySelector('.tab[data-tab=validation].active')) runValidation(); }, 300); }
+
+// ── Terraform ───────────────────────────────────────────────────────
+async function runTerraform() {
+  const panel = document.getElementById('panel-terraform');
+  if (blueprint.nodes.length === 0) { panel.innerHTML = '<div class="empty">Add resources first</div>'; return; }
+  const res = await fetch('/api/terraform', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(blueprint) });
+  if (!res.ok) { panel.innerHTML = '<div class="issue error">Terraform generation failed</div>'; return; }
+  const data = await res.json();
+  panel.innerHTML = Object.entries(data.files).map(([name, content]) =>
+    `<div class="tf-file"><div class="tf-file-header">${name}</div><pre>${escHtml(content)}</pre></div>`
+  ).join('');
+}
+
+// ── DAG ─────────────────────────────────────────────────────────────
+async function runDag() {
+  const svg = document.getElementById('dag-canvas');
+  if (blueprint.nodes.length === 0) { svg.innerHTML = '<text x="50%" y="50%" text-anchor="middle" fill="#8b90a0">Add resources first</text>'; return; }
+  const res = await fetch('/api/dag', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(blueprint) });
+  if (!res.ok) return;
+  const data = await res.json();
+  renderDag(svg, data);
+}
+
+function renderDag(svg, data) {
+  const W = svg.clientWidth || 800;
+  const H = svg.clientHeight || 500;
+  const batches = data.batches;
+  if (!batches.length) return;
+
+  // Position nodes by batch (left to right)
+  const pos = {};
+  const colW = W / (batches.length + 1);
+  batches.forEach((batch, bi) => {
+    const rowH = H / (batch.length + 1);
+    batch.forEach((name, ni) => {
+      pos[name] = { x: colW * (bi + 1), y: rowH * (ni + 1) };
+    });
+  });
+
+  const catColors = { Compute: '#6c8aff', Data: '#4ade80', Messaging: '#fbbf24', Network: '#a78bfa', Security: '#f87171', Storage: '#38bdf8', External: '#fb923c', Identity: '#f472b6' };
+
+  let html = '<defs><marker id="arrow" viewBox="0 0 10 10" refX="28" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#4a5070"/></marker></defs>';
+
+  // Edges
+  for (const e of data.edges) {
+    const from = pos[e.from], to = pos[e.to];
+    if (from && to) html += `<line x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}" stroke="#4a5070" stroke-width="1.5" marker-end="url(#arrow)"/>`;
+  }
+
+  // Nodes
+  for (const n of data.nodes) {
+    const p = pos[n.name];
+    if (!p) continue;
+    const col = catColors[n.category] || '#6c8aff';
+    html += `<circle cx="${p.x}" cy="${p.y}" r="22" fill="${col}22" stroke="${col}" stroke-width="2"/>`;
+    html += `<text x="${p.x}" y="${p.y + 36}" text-anchor="middle" fill="${col}" font-size="11" font-family="sans-serif">${n.name}</text>`;
+    html += `<text x="${p.x}" y="${p.y + 4}" text-anchor="middle" fill="#e1e4ed" font-size="10" font-family="sans-serif">${n.label.substring(0,6)}</text>`;
+  }
+
+  svg.innerHTML = html;
+}
+
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+init();
+</script>
+</body>
+</html>
