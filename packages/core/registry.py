@@ -1,1 +1,0 @@
-core/registry.py
