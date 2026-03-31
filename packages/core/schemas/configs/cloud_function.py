@@ -1,5 +1,3 @@
-from typing import Literal
-
 from pydantic import BaseModel
 
 from .env_vars import EnvVarEntry
@@ -111,4 +109,4 @@ class CloudFunctionConfig(BaseModel):
     event_trigger: CfEventTrigger | None = None
     build_config: CfBuildConfig | None = None
     # --- Platform-specific ---
-    mode: Literal["workflow", "code_editor", "image_url"] | None = None
+    # mode field removed — core only handles infra. Build orchestration is application-layer.

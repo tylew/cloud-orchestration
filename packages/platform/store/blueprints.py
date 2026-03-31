@@ -50,8 +50,6 @@ def save_env_blueprint(tenant_id: str, project_ref_id: str, env_name: str, envel
             "type": n["type"],
             "config": n.get("config", {}),
         }
-        if n.get("internalGraph"):
-            doc_data["internalGraph"] = n["internalGraph"]
         if n.get("depends_on"):
             doc_data["depends_on"] = n["depends_on"]
         # position, dimensions, onCanvas intentionally excluded (HARD-03)
@@ -75,7 +73,6 @@ def save_env_blueprint(tenant_id: str, project_ref_id: str, env_name: str, envel
         old = existing_docs[name]
         new = node_docs[name]
         if (old.get("config") != new.get("config") or
-            old.get("internalGraph") != new.get("internalGraph") or
             old.get("depends_on") != new.get("depends_on")):
             modified.append(name)
 
@@ -138,8 +135,6 @@ def get_env_blueprint(tenant_id: str, project_ref_id: str, env_name: str) -> dic
             "type": d["type"],
             "config": d.get("config", {}),
         }
-        if "internalGraph" in d:
-            node["internalGraph"] = d["internalGraph"]
         if d.get("depends_on"):
             node["depends_on"] = d["depends_on"]
         # position, dimensions, onCanvas excluded from API response (HARD-03)

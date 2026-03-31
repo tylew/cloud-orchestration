@@ -1,5 +1,3 @@
-from typing import Literal
-
 from pydantic import BaseModel
 from .cloud_run import (
     CloudRunVpcAccess,
@@ -24,7 +22,6 @@ class SchedulerTriggerConfig(BaseModel):
 
 
 class CloudRunJobConfig(BaseModel):
-    mode: Literal["workflow", "code_editor", "image_url"] | None = None
     image: str = ""
     # --- Container fields ---
     container_name: str | None = None

@@ -61,14 +61,9 @@ async def trigger_batch_build(
 
         # Gather source files
         if mode == "workflow":
-            from packages.core.codegen.code_generator import generate_compute_code
-            global_config = envelope.get("global", {})
-            all_nodes = envelope.get("nodes", []) + envelope.get("resources", [])
-            generated = generate_compute_code(node, all_nodes, global_config)
-            if not generated or not generated.files:
-                results.append({"node_name": node_name, "status": "skipped", "reason": "code generation failed"})
-                continue
-            source_files = generated.files
+            results.append({"node_name": node_name, "status": "skipped",
+                            "reason": "workflow codegen archived — use code_editor or image_url mode"})
+            continue
         else:
             from packages.platform.gcp.storage import list_files, read_file
             file_list = list_files(project_id, env_name, node_name)
@@ -162,13 +157,7 @@ async def trigger_build(
 
     # Gather source files based on mode (per D-02)
     if mode == "workflow":
-        from packages.core.codegen.code_generator import generate_compute_code
-        global_config = envelope.get("global", {})
-        all_nodes = envelope.get("nodes", []) + envelope.get("resources", [])
-        generated = generate_compute_code(node, all_nodes, global_config)
-        if not generated or not generated.files:
-            raise HTTPException(status_code=422, detail=f"Code generation failed for '{node_name}'")
-        source_files = generated.files
+        raise HTTPException(status_code=422, detail="workflow codegen archived — use code_editor or image_url mode")
     else:
         # code_editor mode: read files from GCS
         from packages.platform.gcp.storage import list_files, read_file

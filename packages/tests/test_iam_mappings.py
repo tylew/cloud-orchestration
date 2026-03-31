@@ -62,24 +62,12 @@ class TestPrivateAccessTypes:
 class TestInferIamRoles:
     """Verify role inference from node dependency graph."""
 
-    def test_compute_with_read_step(self):
-        """Cloud Run reading from Firestore should get datastore.user."""
+    def test_compute_with_read_dep(self):
+        """Cloud Run depending on Firestore should get datastore.user."""
         node = {
             "name": "api-service",
             "type": "cloud_run",
             "depends_on": ["my-db"],
-            "internalGraph": {
-                "steps": [
-                    {
-                        "id": "s1",
-                        "order": 1,
-                        "actionType": "Read",
-                        "targetNodeName": "my-db",
-                        "targetNodeType": "firestore",
-                        "purpose": "Read user data",
-                    }
-                ]
-            },
         }
         all_nodes = [
             node,
@@ -131,31 +119,10 @@ class TestInferIamRoles:
             "name": "api",
             "type": "cloud_run",
             "depends_on": ["my-db"],
-            "internalGraph": {
-                "steps": [
-                    {
-                        "id": "s1",
-                        "order": 1,
-                        "actionType": "Read",
-                        "targetNodeName": "my-db",
-                        "targetNodeType": "firestore",
-                        "purpose": "Read",
-                    },
-                    {
-                        "id": "s2",
-                        "order": 2,
-                        "actionType": "Write",
-                        "targetNodeName": "my-db",
-                        "targetNodeType": "firestore",
-                        "purpose": "Write",
-                    },
-                ]
-            },
         }
         all_nodes = [
             node,
             {"name": "my-db", "type": "firestore", "depends_on": []},
         ]
         roles = infer_iam_roles(node, all_nodes)
-        # Both Read and Write on firestore map to roles/datastore.user
         assert roles == {"roles/datastore.user"}

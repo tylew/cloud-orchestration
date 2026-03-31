@@ -143,13 +143,7 @@ def trigger_build(
 
         # Gather source files
         if mode == "workflow":
-            from packages.core.codegen.code_generator import generate_compute_code
-            global_config = envelope.get("global", {})
-            all_nodes = envelope.get("nodes", []) + envelope.get("resources", [])
-            generated = generate_compute_code(node, all_nodes, global_config)
-            if not generated or not generated.files:
-                return format_error("build_error", f"Code generation failed for '{node_slug}'")
-            source_files = generated.files
+            return format_error("build_error", "workflow codegen archived — use code_editor or image_url mode")
         else:
             from packages.platform.gcp.storage import list_files, read_file
             # MCP write_code_file stores under project_ref_id + node_slug
