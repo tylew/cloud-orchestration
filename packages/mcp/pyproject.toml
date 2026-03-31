@@ -1,0 +1,29 @@
+[project]
+name = "gcp-orchestration-mcp"
+version = "0.1.0"
+description = "MCP server — AI agent tools for infrastructure management"
+requires-python = ">=3.12"
+dependencies = [
+    "gcp-orchestration-core",
+    "gcp-orchestration-platform",
+    "gcp-orchestration-api",
+    "mcp>=1.26.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["packages.mcp*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"

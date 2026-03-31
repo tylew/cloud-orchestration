@@ -1,0 +1,31 @@
+[project]
+name = "gcp-orchestration-api"
+version = "0.1.0"
+description = "FastAPI REST API — handlers, middleware, routing"
+requires-python = ">=3.12"
+dependencies = [
+    "gcp-orchestration-core",
+    "gcp-orchestration-platform",
+    "fastapi>=0.115",
+    "uvicorn[standard]",
+    "sse-starlette>=2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "httpx",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["packages.api*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"

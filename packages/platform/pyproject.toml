@@ -1,0 +1,40 @@
+[project]
+name = "gcp-orchestration-platform"
+version = "0.1.0"
+description = "GCP platform services — auth, Firestore persistence, deploy orchestration, GCP SDK integrations"
+requires-python = ">=3.12"
+dependencies = [
+    "gcp-orchestration-core",
+    "google-cloud-firestore>=2.16",
+    "google-cloud-storage",
+    "google-cloud-build>=3.0",
+    "google-cloud-resource-manager>=1.12",
+    "google-cloud-billing>=1.13",
+    "google-cloud-service-usage>=1.8",
+    "google-cloud-secret-manager>=2.20",
+    "google-cloud-logging>=3.10",
+    "google-auth>=2.29",
+    "firebase-admin>=6.0",
+    "httpx>=0.24",
+    "PyJWT>=2.0",
+    "cryptography>=3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["packages.platform*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["integration: requires GCP credentials and network"]
+asyncio_mode = "auto"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"

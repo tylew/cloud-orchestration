@@ -74,7 +74,7 @@ class TestCloudDnsRegistration:
 class TestCloudDnsTerraform:
     @pytest.fixture
     def env(self):
-        tmpl_dir = os.path.join(os.path.dirname(__file__), "..", "core", "terraform", "templates")
+        tmpl_dir = os.path.join(os.path.dirname(__file__), "..", "terraform", "templates")
         return Environment(loader=FileSystemLoader(tmpl_dir), trim_blocks=True, lstrip_blocks=True)
 
     @pytest.fixture
