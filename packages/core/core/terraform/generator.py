@@ -408,7 +408,7 @@ def generate_terraform(envelope: Envelope) -> dict[str, str]:
         files["backend.tf"] = _render_backend(env, global_cfg)
 
     # variables.tf
-    files["variables.tf"] = _render_variables(env, global_cfg)
+    files["variables.tf"] = _render_variables(env, global_cfg, sorted_nodes)
 
     # iam_bindings.tf -- auto-infer IAM roles from dependency graph (AGT-10)
     iam_block = _render_iam_bindings(sorted_nodes)
@@ -568,8 +568,8 @@ def _render_backend(env: Environment, global_cfg) -> str:
     )
 
 
-def _render_variables(env: Environment, global_cfg) -> str:
-    return (
+def _render_variables(env: Environment, global_cfg, nodes: list = None) -> str:
+    lines = (
         'variable "gcp_project_id" {\n'
         '  type        = string\n'
         '  description = "GCP project ID"\n'
@@ -589,3 +589,15 @@ def _render_variables(env: Environment, global_cfg) -> str:
         '  description = "GCS bucket for Terraform state"\n'
         '}\n'
     )
+    # Add cb_source_bucket if cloud functions are present
+    if nodes and any(
+        (n.type.value if hasattr(n.type, 'value') else str(n.type)) == 'cloud_function'
+        for n in nodes
+    ):
+        lines += (
+            '\nvariable "cb_source_bucket" {\n'
+            '  type        = string\n'
+            '  description = "GCS bucket for Cloud Function source code"\n'
+            '}\n'
+        )
+    return lines

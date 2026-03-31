@@ -1,22 +1,40 @@
-resource "google_firestore_database" "{{ config.database_id | replace('(', '') | replace(')', '') }}" {
+resource "google_firestore_database" "{{ node.name }}" {
   name                        = "{{ config.database_id }}"
   location_id                 = "{{ config.location_id }}"
   type                        = "{{ config.type }}"
   concurrency_mode            = "{{ config.concurrency_mode }}"
   project                     = var.gcp_project_id
 
+{% if config.app_engine_integration_mode %}
+  app_engine_integration_mode = "{{ config.app_engine_integration_mode }}"
+{% endif %}
+{% if config.database_edition %}
+  database_edition            = "{{ config.database_edition }}"
+{% endif %}
 {% if config.point_in_time_recovery_enablement == 'POINT_IN_TIME_RECOVERY_ENABLED' %}
   point_in_time_recovery_enablement = "POINT_IN_TIME_RECOVERY_ENABLED"
 {% endif %}
 {% if config.delete_protection_state == 'DELETE_PROTECTION_ENABLED' %}
   delete_protection_state = "DELETE_PROTECTION_ENABLED"
 {% endif %}
+{% if config.cmek_config %}
+  cmek_config {
+    kms_key_name = "{{ config.cmek_config.kms_key_name }}"
+  }
+{% endif %}
+{% if config.tags %}
+  tags = {
+{% for k, v in config.tags.items() %}
+    {{ k }} = "{{ v }}"
+{% endfor %}
+  }
+{% endif %}
 }
 
 {% for index in config.indexes %}
-resource "google_firestore_index" "{{ config.database_id | replace('(', '') | replace(')', '') }}_{{ index.collection }}_{{ loop.index0 }}" {
+resource "google_firestore_index" "{{ node.name }}_{{ index.collection }}_{{ loop.index0 }}" {
   collection  = "{{ index.collection }}"
-  database    = google_firestore_database.{{ config.database_id | replace('(', '') | replace(')', '') }}.name
+  database    = google_firestore_database.{{ node.name }}.name
   query_scope = "{{ index.query_scope }}"
   project     = var.gcp_project_id
 
@@ -35,8 +53,8 @@ resource "google_firestore_index" "{{ config.database_id | replace('(', '') | re
 {% endfor %}
 
 {% for coll in collections_with_ttl %}
-resource "google_firestore_field" "{{ config.database_id | replace('(', '') | replace(')', '') }}_{{ coll.path | replace('/', '_') }}_{{ coll.ttl_field }}_ttl" {
-  database   = google_firestore_database.{{ config.database_id | replace('(', '') | replace(')', '') }}.name
+resource "google_firestore_field" "{{ node.name }}_{{ coll.path | replace('/', '_') }}_{{ coll.ttl_field }}_ttl" {
+  database   = google_firestore_database.{{ node.name }}.name
   collection = "{{ coll.collection_name }}"
   field      = "{{ coll.ttl_field }}"
   project    = var.gcp_project_id

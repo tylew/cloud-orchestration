@@ -119,23 +119,23 @@ class TestTerraformValidate:
 
     def test_service_account(self):
         ok, output = _validate_blueprint([
-            _node("my-sa", "service_account", {"account_id": "my-sa"}),
+            _node("test-sa", "service_account", {"account_id": "test-service-acct"}),
         ])
         assert ok, output
 
     def test_cloud_run_minimal(self):
         ok, output = _validate_blueprint([
-            _node("my-sa", "service_account", {"account_id": "my-sa"}),
+            _node("test-sa", "service_account", {"account_id": "test-service-acct"}),
             _node("my-service", "cloud_run", {
                 "image": "us-docker.pkg.dev/cloudrun/container/hello",
                 "service_account": "my-sa",
-            }, depends_on=["my-sa"]),
+            }, depends_on=["test-sa"]),
         ])
         assert ok, output
 
     def test_cloud_run_full(self):
         ok, output = _validate_blueprint([
-            _node("my-sa", "service_account", {"account_id": "my-sa"}),
+            _node("test-sa", "service_account", {"account_id": "test-service-acct"}),
             _node("my-service", "cloud_run", {
                 "image": "us-docker.pkg.dev/cloudrun/container/hello",
                 "service_account": "my-sa",
@@ -148,32 +148,32 @@ class TestTerraformValidate:
                 "ingress": "INGRESS_TRAFFIC_ALL",
                 "execution_environment": "EXECUTION_ENVIRONMENT_GEN2",
                 "labels": {"team": "backend"},
-            }, depends_on=["my-sa"]),
+            }, depends_on=["test-sa"]),
         ])
         assert ok, output
 
     def test_cloud_run_job(self):
         ok, output = _validate_blueprint([
-            _node("my-sa", "service_account", {"account_id": "my-sa"}),
+            _node("test-sa", "service_account", {"account_id": "test-service-acct"}),
             _node("my-job", "cloud_run_job", {
                 "image": "us-docker.pkg.dev/cloudrun/container/job",
                 "service_account": "my-sa",
                 "task_count": 3,
                 "parallelism": 2,
-            }, depends_on=["my-sa"]),
+            }, depends_on=["test-sa"]),
         ])
         assert ok, output
 
     def test_cloud_function(self):
         ok, output = _validate_blueprint([
-            _node("my-sa", "service_account", {"account_id": "my-func-sa"}),
+            _node("test-sa", "service_account", {"account_id": "my-func-sa"}),
             _node("my-func", "cloud_function", {
                 "runtime": "python312",
                 "entry_point": "main",
                 "service_account": "my-sa",
                 "source_bucket": "my-source-bucket",
                 "source_object": "source.zip",
-            }, depends_on=["my-sa"]),
+            }, depends_on=["test-sa"]),
         ])
         assert ok, output
 
@@ -233,7 +233,7 @@ class TestTerraformValidate:
                 "region": "us-central1",
                 "network": "my-vpc",
             }, depends_on=["my-vpc"]),
-            _node("my-sa", "service_account", {"account_id": "my-sa"}),
+            _node("test-sa", "service_account", {"account_id": "test-service-acct"}),
             _node("my-db", "cloud_sql", {
                 "database_version": "POSTGRES_15",
                 "tier": "db-f1-micro",

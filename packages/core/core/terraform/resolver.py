@@ -8,31 +8,43 @@ from core.registry import REGISTRY
 
 
 def resolve_node_ref(ref: str, nodes: dict[str, BaseNode]) -> str:
-    """Resolve 'node:vpc-main.self_link' -> 'google_compute_network.vpc-main.self_link'."""
+    """Resolve node references to Terraform resource references.
+
+    Handles two formats:
+    1. 'node:vpc-main.self_link' -> 'google_compute_network.vpc-main.self_link'
+    2. 'my-vpc' (bare node name) -> 'google_compute_network.my-vpc.id'
+
+    Bare strings that don't match any known node name are returned as-is.
+    """
+    # Format 1: explicit node:name.attribute
     match = re.match(r"^node:([^.]+)\.(.+)$", ref)
-    if not match:
-        return ref
+    if match:
+        node_name, attribute = match.groups()
+        node = nodes.get(node_name)
+        if not node:
+            return ref
+        defn = REGISTRY.get(node.type)
+        if not defn:
+            return ref
+        # Non-TF nodes (e.g. third_party_api): inline the config value as a quoted string
+        if not defn.terraform_resource:
+            config = node.config
+            if hasattr(config, attribute):
+                return f'"{getattr(config, attribute)}"'
+            if isinstance(config, dict) and attribute in config:
+                return f'"{config[attribute]}"'
+            return ref
+        return f"{defn.terraform_resource}.{node_name}.{attribute}"
 
-    node_name, attribute = match.groups()
-    node = nodes.get(node_name)
-    if not node:
-        return ref
+    # Format 2: bare node name -> resource.name.id
+    node = nodes.get(ref)
+    if node:
+        defn = REGISTRY.get(node.type)
+        if defn and defn.terraform_resource:
+            return f"{defn.terraform_resource}.{ref}.id"
 
-    defn = REGISTRY.get(node.type)
-    if not defn:
-        return ref
-
-    # Non-TF nodes (e.g. third_party_api): inline the config value as a quoted string
-    if not defn.terraform_resource:
-        config = node.config
-        if hasattr(config, attribute):
-            return f'"{getattr(config, attribute)}"'
-        if isinstance(config, dict) and attribute in config:
-            return f'"{config[attribute]}"'
-        return ref
-
-    tf_name = node_name
-    return f"{defn.terraform_resource}.{tf_name}.{attribute}"
+    # Not a node reference — return as-is
+    return ref
 
 
 def topological_sort(nodes: list[BaseNode]) -> list[BaseNode]:
