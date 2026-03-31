@@ -48,20 +48,6 @@ class TestValidateBlueprint:
         dep_errors = [e for e in errors if "does-not-exist" in e.message]
         assert len(dep_errors) >= 1
 
-    def test_invalid_iam_service_account_ref(self):
-        data = {
-            "global": {"project_id": "test", "region": "us-central1", "environment": "dev"},
-            "nodes": [
-                {"name": "my-service", "type": "cloud_run", "config": {
-                    "image": "gcr.io/test/img", "service_account": "my-sa",
-                }, "iam": {"service_account": "nonexistent-sa"}},
-            ],
-        }
-        envelope = Envelope.model_validate(data)
-        issues = validate_blueprint(envelope)
-        errors, _ = _issues_by_severity(issues)
-        sa_errors = [e for e in errors if "iam.service_account" in e.message]
-        assert len(sa_errors) >= 1
 
 
 class TestRequiredFields:

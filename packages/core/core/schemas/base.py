@@ -1,38 +1,12 @@
-"""Core schema models derived from GCP_SCHEMA.md S1-S3."""
+"""Core schema models — GCP resource definitions and blueprint envelope."""
 
 import re
 from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
 
-from .enums import NodeType, OutputType, Protocol
+from .enums import NodeType
 from .configs import TYPE_TO_CONFIG
-
-
-class NodeInput(BaseModel):
-    name: str
-    source: str
-    protocol: Protocol | None = None
-
-
-class NodeOutput(BaseModel):
-    name: str
-    type: OutputType | None = None
-    value: str | None = None
-
-
-class IamBlock(BaseModel):
-    service_account: str | None = None
-    roles: list[str] = []
-
-
-class InvokerBinding(BaseModel):
-    service_account: str
-    description: str | None = None
-
-
-class AccessorBinding(BaseModel):
-    service_account: str
 
 
 class BaseNode(BaseModel, extra="allow"):
@@ -40,20 +14,13 @@ class BaseNode(BaseModel, extra="allow"):
     name: str
     type: NodeType
     depends_on: list[str] = []
-    inputs: list[NodeInput] = []
-    outputs: list[NodeOutput] = []
-    iam: IamBlock | None = None
-    invoker_bindings: list[InvokerBinding] = []
-    accessor_bindings: list[AccessorBinding] = []
     config: dict[str, Any] | BaseModel = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def resolve_config_and_validate(self):
-        # Validate name is kebab-case
         if not re.match(r"^[a-z][a-z0-9]*(-[a-z0-9]+)*$", self.name):
             raise ValueError(f"Node name {self.name!r} must be kebab-case")
 
-        # Resolve polymorphic config — strict (D-05)
         config_cls = TYPE_TO_CONFIG.get(self.type)
         if config_cls is None:
             raise ValueError(f"Unknown node type: {self.type!r}")

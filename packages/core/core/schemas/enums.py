@@ -31,18 +31,6 @@ class NodeType(StrEnum):
     CLOUD_SQL_TABLE = "cloud_sql_table"
 
 
-class Protocol(StrEnum):
-    HTTPS = "https"
-    GRPC = "grpc"
-    SQL = "sql"
-    PUBSUB = "pubsub"
-    TASK_QUEUE = "task_queue"
-    BIGQUERY_API = "bigquery_api"
-    BIGTABLE_API = "bigtable_api"
-    FIRESTORE_API = "firestore_api"
-    GCS = "gcs"
-
-
 class OutputType(StrEnum):
     HTTP_ENDPOINT = "http_endpoint"
     GRPC_ENDPOINT = "grpc_endpoint"

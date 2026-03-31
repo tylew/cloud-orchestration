@@ -329,34 +329,6 @@ def validate_blueprint(envelope: Envelope) -> list[ValidationIssue]:
             issues.append(ValidationIssue("error", node.name, f"Duplicate node name: {node.name!r}"))
         seen_names.add(node.name)
 
-    for node in envelope.nodes:
-        # depends_on validated by validate_depends_on() (supports both slug and name)
-
-        # iam.service_account refs point to service_account nodes
-        if node.iam and node.iam.service_account:
-            sa_name = node.iam.service_account
-            if sa_name not in node_map:
-                issues.append(ValidationIssue("error", node.name, f"iam.service_account references unknown node: {sa_name!r}"))
-            elif node_map[sa_name].type != "service_account":
-                issues.append(ValidationIssue("error", node.name, f"iam.service_account {sa_name!r} is not a service_account node"))
-
-        # invoker_bindings refs
-        for ib in node.invoker_bindings:
-            if ib.service_account not in node_map:
-                issues.append(ValidationIssue("error", node.name, f"invoker_binding references unknown SA: {ib.service_account!r}"))
-
-        # accessor_bindings refs
-        for ab in node.accessor_bindings:
-            if ab.service_account not in node_map:
-                issues.append(ValidationIssue("error", node.name, f"accessor_binding references unknown SA: {ab.service_account!r}"))
-
-        # Validate node:X.Y references in inputs
-        for inp in node.inputs:
-            if inp.source.startswith("node:"):
-                ref_parts = inp.source[5:].split(".", 1)
-                if ref_parts[0] not in node_map:
-                    issues.append(ValidationIssue("error", node.name, f"input source references unknown node: {ref_parts[0]!r}"))
-
     # Reconstruct collection tree from flat nodes before field resolution
     reconstruct_collection_tree(envelope.nodes)
 

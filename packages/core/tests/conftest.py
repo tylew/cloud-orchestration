@@ -4,7 +4,7 @@ import pytest
 
 try:
     from core.schemas.base import (
-        Envelope, BaseNode, GlobalConfig, Metadata, NodeOutput,
+        Envelope, BaseNode, GlobalConfig, Metadata,
     )
     from core.schemas.enums import NodeType
     _HAS_CORE = True
