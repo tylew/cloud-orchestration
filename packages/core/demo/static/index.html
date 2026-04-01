@@ -23,7 +23,7 @@
   .type-btn:hover { background: var(--bg3); border-color: var(--border); }
 
   /* Main area */
-  #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  #main { flex: 1; display: flex; flex-direction: column; overflow-y: auto; }
 
   /* Tabs */
   #tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--bg2); }
@@ -32,8 +32,9 @@
   .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
 
   /* Panels */
-  .panel { flex: 1; overflow: auto; padding: 20px; display: none; }
-  .panel.active { display: flex; flex-direction: column; gap: 16px; }
+  .panel { display: none; padding: 0; }
+  .panel.active { display: flex; flex-direction: column; }
+  .panel-scroll { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
 
   /* Blueprint panel */
   #blueprint-nodes { display: flex; flex-direction: column; gap: 8px; }
@@ -45,10 +46,7 @@
   .node-card details { margin-top: 8px; }
   .node-card summary { font-size: 12px; color: var(--text2); cursor: pointer; }
   .node-card textarea { width: 100%; min-height: 80px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-family: var(--mono); font-size: 12px; padding: 8px; margin-top: 6px; resize: vertical; }
-  .deps-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
-  .dep-chip { font-size: 11px; background: var(--bg3); padding: 2px 8px; border-radius: 4px; color: var(--accent); cursor: pointer; }
-  .dep-chip:hover { text-decoration: line-through; color: var(--red); }
-  .add-dep-select { font-size: 12px; background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 4px; padding: 2px 6px; }
+
 
   /* Validation panel */
   .issue { padding: 8px 12px; border-radius: 6px; font-size: 13px; }
@@ -59,8 +57,12 @@
 
   /* Terraform panel */
   .tf-file { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
-  .tf-file-header { padding: 8px 12px; background: var(--bg3); font-size: 12px; color: var(--text2); font-family: var(--mono); border-bottom: 1px solid var(--border); }
-  .tf-file pre { padding: 12px; font-size: 12px; font-family: var(--mono); overflow-x: auto; white-space: pre; line-height: 1.5; }
+  .tf-file summary { padding: 8px 12px; background: var(--bg3); font-size: 12px; color: var(--text2); font-family: var(--mono); cursor: pointer; user-select: none; list-style: none; display: flex; align-items: center; gap: 8px; }
+  .tf-file summary::-webkit-details-marker { display: none; }
+  .tf-file summary::before { content: '▶'; font-size: 10px; transition: transform 0.15s; }
+  .tf-file[open] summary::before { transform: rotate(90deg); }
+  .tf-file summary .line-count { margin-left: auto; color: var(--text3, #666); font-size: 11px; }
+  .tf-file pre { padding: 12px; font-size: 12px; font-family: var(--mono); overflow-x: auto; white-space: pre; line-height: 1.5; margin: 0; max-height: 500px; overflow-y: auto; }
 
 
   /* Config dialog */
@@ -93,11 +95,13 @@
     <div class="tab" data-tab="terraform">Terraform</div>
   </div>
   <div id="panel-blueprint" class="panel active">
-    <div id="blueprint-nodes"></div>
-    <div id="blueprint-empty" class="empty">Click a resource type to add it to your blueprint</div>
+    <div class="panel-scroll">
+      <div id="blueprint-nodes"></div>
+      <div id="blueprint-empty" class="empty">Click a resource type to add it to your blueprint</div>
+    </div>
   </div>
-  <div id="panel-validation" class="panel"></div>
-  <div id="panel-terraform" class="panel"></div>
+  <div id="panel-validation" class="panel"><div class="panel-scroll" id="panel-validation-inner"></div></div>
+  <div id="panel-terraform" class="panel"><div class="panel-scroll" id="panel-terraform-inner"></div></div>
 </div>
 
 <div id="config-dialog">
@@ -122,6 +126,8 @@ let pendingType = null;
 async function init() {
   const res = await fetch('/api/types');
   types = await res.json();
+  const optRes = await fetch('/api/options');
+  window.optionsData = await optRes.json();
   renderPalette();
   renderBlueprint();
   document.querySelectorAll('.tab').forEach(t => t.onclick = () => switchTab(t.dataset.tab));
@@ -168,6 +174,9 @@ function addResource(type) {
 
     if (prop.type === 'boolean') {
       html += `<label>${key}${req}</label><select data-key="${key}"><option value="true" ${def === true ? 'selected' : ''}>true</option><option value="false" ${def === false ? 'selected' : ''}>false</option></select>`;
+    } else if (window.optionsData && window.optionsData[type] && window.optionsData[type][key]) {
+      const opts = window.optionsData[type][key];
+      html += `<label>${key}${req}</label><select data-key="${key}">${opts.map(o => `<option value="${o.value}"${o.value === def ? ' selected' : ''}>${o.label} (${o.value})</option>`).join('')}</select>`;
     } else if (prop.enum) {
       html += `<label>${key}${req}</label><select data-key="${key}">${prop.enum.map(v => `<option${v === def ? ' selected' : ''}>${v}</option>`).join('')}</select>`;
     } else if (prop.type === 'integer' || prop.type === 'number') {
@@ -246,14 +255,6 @@ function renderBlueprint() {
         <button class="remove-btn" onclick="removeNode(${i})">&times;</button>
       </div>
       ${metaLine}
-      <div class="deps-row">
-        <span style="font-size:11px;color:var(--text2)">deps:</span>
-        ${(n.depends_on||[]).map(d => `<span class="dep-chip" onclick="removeDep(${i},'${d}')">${d}</span>`).join('')}
-        ${otherNodes.length ? `<select class="add-dep-select" onchange="addDep(${i},this.value);this.value=''">
-          <option value="">+ add</option>
-          ${otherNodes.filter(o => !(n.depends_on||[]).includes(o.name)).map(o => `<option value="${o.name}">${o.name}</option>`).join('')}
-        </select>` : ''}
-      </div>
       <details>
         <summary>config (JSON)</summary>
         <textarea onchange="updateConfig(${i}, this.value)">${JSON.stringify(n.config, null, 2)}</textarea>
@@ -263,8 +264,6 @@ function renderBlueprint() {
 }
 
 function removeNode(i) { blueprint.nodes.splice(i, 1); renderBlueprint(); autoValidate(); }
-function addDep(i, dep) { if (dep && !blueprint.nodes[i].depends_on.includes(dep)) { blueprint.nodes[i].depends_on.push(dep); renderBlueprint(); autoValidate(); } }
-function removeDep(i, dep) { blueprint.nodes[i].depends_on = blueprint.nodes[i].depends_on.filter(d => d !== dep); renderBlueprint(); autoValidate(); }
 function updateConfig(i, val) { try { blueprint.nodes[i].config = JSON.parse(val); autoValidate(); } catch(e) {} }
 
 // ── Tabs ────────────────────────────────────────────────────────────
@@ -277,7 +276,7 @@ function switchTab(tab) {
 
 // ── Validation ──────────────────────────────────────────────────────
 async function runValidation() {
-  const panel = document.getElementById('panel-validation');
+  const panel = document.getElementById('panel-validation-inner');
   if (blueprint.nodes.length === 0) { panel.innerHTML = '<div class="empty">Add resources first</div>'; return; }
   const res = await fetch('/api/validate', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(blueprint) });
   const data = await res.json();
@@ -306,15 +305,16 @@ function autoValidate() {
 
 // ── Terraform ───────────────────────────────────────────────────────
 async function runTerraform() {
-  const panel = document.getElementById('panel-terraform');
+  const panel = document.getElementById('panel-terraform-inner');
   if (blueprint.nodes.length === 0) { panel.innerHTML = '<div class="empty">Add resources first</div>'; return; }
   const res = await fetch('/api/terraform', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(blueprint) });
   if (!res.ok) { panel.innerHTML = '<div class="issue error">Terraform generation failed</div>'; return; }
   const data = await res.json();
   let html = `<div style="margin-bottom:12px"><button class="btn" onclick="runTfValidate()" id="tf-validate-btn">▶ terraform validate</button><span id="tf-validate-result" style="margin-left:12px;font-size:12px"></span></div>`;
-  html += Object.entries(data.files).map(([name, content]) =>
-    `<div class="tf-file"><div class="tf-file-header">${name}</div><pre>${escHtml(content)}</pre></div>`
-  ).join('');
+  html += Object.entries(data.files).map(([name, content]) => {
+    const lines = content.split('\n').length;
+    return `<details class="tf-file"><summary>${name}<span class="line-count">${lines} lines</span></summary><pre>${escHtml(content)}</pre></details>`;
+  }).join('');
   panel.innerHTML = html;
 }
 

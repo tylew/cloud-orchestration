@@ -12,6 +12,7 @@ from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
 
+from core.options import OPTIONS_REGISTRY
 from core.registry import REGISTRY
 from core.schemas.base import Envelope
 from core.schemas.configs import TYPE_TO_CONFIG
@@ -28,6 +29,18 @@ STATIC_DIR = Path(__file__).parent / "static"
 
 
 # ── API endpoints ────────────────────────────────────────────────────
+
+@app.get("/api/options")
+def get_options():
+    """Return OPTIONS_REGISTRY as {node_type: {field_path: [{value, label}]}}."""
+    result = {}
+    for (node_type, field_path), opts in OPTIONS_REGISTRY.items():
+        nt = node_type.value
+        if nt not in result:
+            result[nt] = {}
+        result[nt][field_path] = [{"value": o["value"], "label": o["label"]} for o in opts]
+    return result
+
 
 @app.get("/api/types")
 def get_types():

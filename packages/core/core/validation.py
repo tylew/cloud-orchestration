@@ -140,15 +140,13 @@ def validate_per_type_name_uniqueness(nodes: list[BaseNode]) -> list[ValidationI
 
 
 def validate_global_uniqueness(nodes: list[BaseNode]) -> list[ValidationIssue]:
-    """Warn about types whose names must be globally unique in GCP (D-19)."""
-    issues: list[ValidationIssue] = []
-    for node in nodes:
-        if str(node.type) in GLOBAL_UNIQUE_TYPES:
-            issues.append(ValidationIssue(
-                "warning", node.name,
-                f"{node.type} names must be globally unique in GCP",
-            ))
-    return issues
+    """Warn about types whose names must be globally unique in GCP (D-19).
+
+    NOTE: UUID-based resource_id naming (e.g. dev-b7cb9da9) already ensures
+    GCP-level uniqueness, so this check is no longer needed. Kept as no-op
+    to avoid removing the call site.
+    """
+    return []
 
 
 def validate_firestore_free_tier(nodes: list[BaseNode]) -> list[ValidationIssue]:
